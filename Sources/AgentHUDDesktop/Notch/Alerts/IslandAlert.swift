@@ -96,6 +96,7 @@ final class IslandAlertQueue {
     }
 
     static let visibleDuration: Duration = .seconds(4)
+    static let replyDuration: Duration = .seconds(20)
 
     private(set) var current: Presentation?
     /// Called when the current alert's time is up; the owner dismisses it.
@@ -181,8 +182,11 @@ final class IslandAlertQueue {
     private func scheduleExpiry() {
         expiry?.cancel()
         guard !held, current?.alert.isPersistent != true else { return }
+        // A reply is read, and maybe answered, before it goes.
+        var duration = Self.visibleDuration
+        if case .completion = current?.alert { duration = Self.replyDuration }
         expiry = Task { [weak self] in
-            do { try await Task.sleep(for: Self.visibleDuration) } catch { return }
+            do { try await Task.sleep(for: duration) } catch { return }
             self?.onExpire()
         }
     }

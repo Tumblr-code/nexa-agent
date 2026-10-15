@@ -95,10 +95,12 @@ struct IslandAlertDetailView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(event.task).font(.ui(15, .medium)).lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let message = event.message {
-                        Text(message).font(.ui(12)).foregroundStyle(.white.opacity(0.68)).lineLimit(4)
-                            .fixedSize(horizontal: false, vertical: true)
+                    if let reply = event.reply ?? event.message {
+                        ReplyText(text: reply)
                     }
+                }
+                if QuickReply.supports(vendor: event.vendor) {
+                    QuickReplyBar(completion: event)
                 }
                 HStack {
                     Text(event.completedAt.formatted(date: .omitted, time: .shortened))
@@ -324,5 +326,117 @@ private struct TurnEndedSymbol: View {
         Image(systemName: "text.bubble")
             .symbolRenderingMode(.palette)
             .font(.system(size: size, weight: .semibold)).foregroundStyle(Color(IslandAlert.turnAccent))
+    }
+}
+
+/// The whole reply, scrolling once it is taller than the card should grow, and selectable for copying.
+private struct ReplyText: View {
+    let text: String
+
+    var body: some View {
+        ScrollView(.vertical) {
+            Text(Self.rendered(text))
+                .font(.ui(12)).foregroundStyle(.white.opacity(0.82))
+                .lineSpacing(3)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .scrollIndicators(.automatic)
+        .frame(maxHeight: 280)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("island-alert-reply")
+    }
+
+    /// Replies are Markdown; inline styles render, and the line structure (lists, code blocks) is kept as written.
+    static func rendered(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
+    }
+}
+
+/// Answers the session from the card: Return sends, and the next reply arrives as the session's next reminder.
+private struct QuickReplyBar: View {
+    let completion: SessionCompletion
+    @Environment(\.islandTyping) private var islandTyping
+    @State private var draft = ""
+    @State private var state: SendState = .idle
+    @State private var fieldID = UUID()
+
+    enum SendState: Equatable {
+        case idle, sending
+        case sent(QuickReply.Delivery)
+        case failed(String)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                IslandTextField(
+                    text: draft,
+                    placeholder: L10n.text("回复 \(completion.agentVendor)…（回车发送）", "Reply to \(completion.agentVendor)… (Return sends)"),
+                    onChange: { draft = $0 },
+                    onSubmit: send,
+                    onTyping: islandTyping
+                )
+                .id(fieldID)
+                .frame(height: 16)
+                .accessibilityIdentifier("island-quick-reply-field")
+                Button(action: send) {
+                    Image(systemName: state == .sending ? "ellipsis" : "arrow.up")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.black)
+                        .frame(width: 22, height: 22)
+                        .background(canSend ? Theme.accent : Color.white.opacity(0.25), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSend)
+                .accessibilityIdentifier("island-quick-reply-send")
+                .help(L10n.text("发送", "Send"))
+            }
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.white.opacity(0.12), lineWidth: 1))
+            if let note {
+                Text(note).font(.ui(11)).foregroundStyle(noteColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var canSend: Bool { state != .sending && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    private var note: String? {
+        switch state {
+        case .idle, .sending: return nil
+        case .sent(.live): return L10n.text("已发送到 \(completion.agentVendor)，回复好了会显示在这里。",
+                                           "Sent to \(completion.agentVendor); its reply will show here.")
+        case .sent(.background): return L10n.text("已在后台发送，回复好了会显示在这里（\(completion.agentVendor) 窗口不会实时显示这一轮）。",
+                                                 "Sent in the background; the reply will show here (the \(completion.agentVendor) window won't show this turn live).")
+        case .failed(let reason): return reason
+        }
+    }
+
+    private var noteColor: Color {
+        if case .failed = state { return Color(hex: 0xff8a7a) }
+        return .white.opacity(0.55)
+    }
+
+    private func send() {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canSend, !text.isEmpty else { return }
+        state = .sending
+        Task { @MainActor in
+            do {
+                let delivery = try await QuickReply.send(text, to: completion)
+                draft = ""
+                fieldID = UUID()
+                state = .sent(delivery)
+            } catch let failure as QuickReply.Failure {
+                state = .failed(failure.message)
+            } catch {
+                state = .failed(L10n.text("发送失败：\(error.localizedDescription)", "Not sent: \(error.localizedDescription)"))
+            }
+        }
     }
 }

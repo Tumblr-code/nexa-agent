@@ -15,6 +15,8 @@ public struct SessionCompletion: Codable, Hashable, Sendable, Identifiable {
     public let completedAt: Date
     /// The final reply's last paragraph, kept only in memory for the local completion reminder.
     public let message: String?
+    /// The whole final reply, up to `replyLimit` characters, kept only in memory so the reminder can show it in full.
+    public let reply: String?
     /// Source-owned destination on this Mac; never encoded with completion reports.
     public var navigationTarget: SessionNavigationTarget?
 
@@ -26,7 +28,15 @@ public struct SessionCompletion: Codable, Hashable, Sendable, Identifiable {
         self.client = client
         self.startedAt = startedAt; self.completedAt = completedAt
         self.message = Self.lastParagraph(message)
+        self.reply = Self.wholeReply(message)
         self.navigationTarget = navigationTarget
+    }
+
+    public static let replyLimit = 16_000
+
+    static func wholeReply(_ message: String?) -> String? {
+        guard let text = message?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+        return text.count > replyLimit ? String(text.prefix(replyLimit - 1)) + "…" : text
     }
 
     static func lastParagraph(_ message: String?) -> String? {
@@ -59,6 +69,7 @@ public struct SessionCompletion: Codable, Hashable, Sendable, Identifiable {
         startedAt = try values.decodeIfPresent(Date.self, forKey: .startedAt)
         completedAt = try values.decode(Date.self, forKey: .completedAt)
         message = nil
+        reply = nil
         navigationTarget = nil
     }
 }

@@ -340,7 +340,7 @@ public struct CodexTranscript: Codable, Sendable {
         let index = turnID.flatMap { id in turns?.lastIndex(where: { $0.id == id }) } ?? (turnID == nil ? turns?.indices.last : nil)
         guard let index, turns?[index].state == .running,
               date >= (turns?[index].startedAt ?? .distantPast) else { return }
-        if let paragraph = SessionCompletion.lastParagraph(text) { turns?[index].finalMessage = paragraph }
+        if let whole = SessionCompletion.wholeReply(text) { turns?[index].finalMessage = whole }
     }
 
     /// Whether an event's `error` field reports a failure: present, not JSON null and not an empty string.

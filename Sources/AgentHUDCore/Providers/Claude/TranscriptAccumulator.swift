@@ -211,7 +211,8 @@ public struct TranscriptAccumulator: Hashable, Sendable, Codable {
             turnID: event.messageId ?? String(RecordCoding.milliseconds(event.timestamp)),
             task: title ?? cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Claude Code",
             model: event.model.map { ClaudeModelInfo.parse($0)?.displayName ?? $0 } ?? "Claude",
-            startedAt: currentTurn?.state == .running ? currentTurn?.startedAt : nil, completedAt: event.timestamp
+            startedAt: currentTurn?.state == .running ? currentTurn?.startedAt : nil, completedAt: event.timestamp,
+            message: event.text
         )
         // Claude Code writes one line per content block, and every line carries the message's stop reason.
         if let index = completions?.firstIndex(where: { $0.id == completion.id }), let previous = completions?[index] {
@@ -222,7 +223,8 @@ public struct TranscriptAccumulator: Hashable, Sendable, Codable {
                     sessionID: completion.sessionID, vendor: completion.vendor,
                     turnID: event.messageId ?? String(RecordCoding.milliseconds(event.timestamp)),
                     task: previous.task, model: completion.model,
-                    startedAt: previous.startedAt, completedAt: completion.completedAt
+                    startedAt: previous.startedAt, completedAt: completion.completedAt,
+                    message: event.text ?? previous.reply
                 )
             }
             return

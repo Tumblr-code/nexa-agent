@@ -11,7 +11,7 @@ import Foundation
 public enum FastTranscriptParser {
     private static let prefixLength = 2048
     /// How much of an assistant message is kept. Readers truncate further; this only bounds the work of reading it.
-    static let messageLength = 2048
+    static let messageLength = SessionCompletion.replyLimit
     /// Current builds write `entrypoint`, `cwd`, `sessionId` and `version` after the message, close to the end.
     private static let tailLength = 2048
 
