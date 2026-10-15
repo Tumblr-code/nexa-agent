@@ -344,18 +344,37 @@ struct ReplyText: View {
     var maxHeight: CGFloat = 280
 
     var body: some View {
-        ScrollView(.vertical) {
-            Text(Self.rendered(text))
-                .font(.ui(12)).foregroundStyle(.white.opacity(0.82))
-                .lineSpacing(3)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+        // Like a chat: it opens at the end of the reply, beside the field, and stays there as the reply changes.
+        ScrollViewReader { reader in
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    Text(Self.rendered(text))
+                        .font(.ui(12)).foregroundStyle(.white.opacity(0.82))
+                        .lineSpacing(3)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Color.clear.frame(height: 1).id(Self.end)
+                }
+            }
+            .onAppear { scrollToEnd(reader) }
+            .onChange(of: text) { _, _ in scrollToEnd(reader) }
         }
         .scrollIndicators(.automatic)
         .frame(maxHeight: maxHeight)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier("island-alert-reply")
+    }
+
+    private static let end = "reply-end"
+
+    private func scrollToEnd(_ reader: ScrollViewProxy) {
+        reader.scrollTo(Self.end, anchor: .bottom)
+        // Once more after layout settles: the first pass can run before the text has its final height.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            reader.scrollTo(Self.end, anchor: .bottom)
+        }
     }
 
     /// Replies are Markdown; inline styles render, and the line structure (lists, code blocks) is kept as written.
