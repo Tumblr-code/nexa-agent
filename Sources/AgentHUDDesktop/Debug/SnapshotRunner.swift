@@ -151,6 +151,8 @@ public enum SnapshotRunner {
         save("bots-asking", BotSheetScene(phase: .asking), folder: folder, scheme: .dark)
         save("bots-done", BotSheetScene(phase: .done, seconds: 0.9), folder: folder, scheme: .dark)
         save("bots-resting", BotSheetScene(phase: .idle, seconds: 2), folder: folder, scheme: .dark)
+        save("bots-moods-working", BotMoodScene(phase: .working), folder: folder, scheme: .dark)
+        save("bots-moods-idle", BotMoodScene(phase: .idle), folder: folder, scheme: .dark)
         // The Display pane with this machine's screen put in logo mode, to check the preview against the HUD.
         if let main = NSScreen.main {
             let key = ScreenIdentity.key(for: main)

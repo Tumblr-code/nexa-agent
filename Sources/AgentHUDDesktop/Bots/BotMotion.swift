@@ -29,6 +29,15 @@ struct BotFace: Equatable, Sendable {
     var happy: CGFloat = 0
     /// Positive grows the right eye and narrows the left, as when peering at something.
     var lean: CGFloat = 0
+    /// A bead of sweat beside the eyes while it works hard: how present it is, and how far it has run down.
+    var sweat: CGFloat = 0
+    var sweatFall: CGFloat = 0
+    /// Dozing: how present the floating "z"s are, and where they are in their rise.
+    var sleepy: CGFloat = 0
+    var zRise: CGFloat = 0
+    /// Thinking: how present the "…" above the head is, and which of its dots is lit (0–3).
+    var dots: CGFloat = 0
+    var dotStep: CGFloat = 0
 }
 
 /// How the whole bot sits: offsets are shares of the mark's side, rotation is in degrees.
@@ -105,7 +114,13 @@ struct BotMotion: Sendable {
     private var random: SplitMix
 
     private struct Act {
-        enum Kind: CaseIterable { case glance, blinkTwice, squint, widen, smile, inspect, tilt, stretch, wiggle, turn }
+        enum Kind: CaseIterable {
+            case glance, blinkTwice, squint, widen, smile, inspect, tilt, stretch, wiggle, turn
+            /// Busy at work: typing away, sweating it out, thinking it over, nodding along.
+            case type, sweat, think, nod
+            /// Slacking off between turns: nodding off and yawning.
+            case doze, yawn
+        }
         var kind: Kind
         var start: TimeInterval
         var length: TimeInterval
@@ -289,6 +304,30 @@ struct BotMotion: Sendable {
             pose.scaleY *= 1 + 0.06 * arc
             pose.scaleX *= 1 - 0.04 * arc
         case .wiggle: pose.rotation += 8 * sin(2 * .pi * 3 * progress) * (1 - progress)
+        case .type:
+            // Quick small hops of the whole body, like keys struck in a burst.
+            let beat = abs(sin(2 * .pi * 6 * progress))
+            pose.scaleY *= 1 - 0.04 * beat * swell
+            pose.scaleX *= 1 + 0.02 * beat * swell
+            pose.rotation += 1.5 * sin(2 * .pi * 3 * progress) * swell
+        case .nod:
+            pose.scaleY *= 1 - 0.035 * max(0, sin(2 * .pi * 3 * progress)) * swell
+        case .sweat:
+            pose.rotation += act.side * 3 * swell
+        case .doze:
+            // It sinks as it nods off, and starts awake at the end.
+            pose.scaleY *= 1 - 0.09 * swell
+            pose.scaleX *= 1 + 0.05 * swell
+            pose.rotation += act.side * 7 * swell
+            if progress > 0.86 {
+                let x = (progress - 0.86) / 0.14
+                pose.rotation += 7 * sin(2 * .pi * 3 * x) * (1 - x)
+                pose.scaleY *= 1 + 0.06 * sin(.pi * x)
+            }
+        case .yawn:
+            let arc = sin(.pi * progress)
+            pose.scaleY *= 1 + 0.1 * arc
+            pose.scaleX *= 1 - 0.05 * arc
         default: break
         }
         return pose
@@ -317,6 +356,33 @@ struct BotMotion: Sendable {
                     target.lean = act.side * swell
                     target.look += (act.side * 0.6 - target.look) * swell
                     target.lookY -= target.lookY * swell
+                case .type:
+                    // Eyes down on the keys, running along the line.
+                    target.lookY += (0.65 - target.lookY) * swell
+                    target.look += (0.35 * sin(2 * .pi * 1.4 * progress(of: act, at: now)) - target.look) * swell
+                    target.open = 1 - 0.25 * swell
+                case .sweat:
+                    target.open = 1 - 0.4 * swell
+                    target.lookY += (0.3 - target.lookY) * swell
+                    target.sweat = swell
+                case .think:
+                    target.look += (act.side * 0.55 - target.look) * swell
+                    target.lookY += (-0.65 - target.lookY) * swell
+                    target.dots = swell
+                case .nod:
+                    target.lookY += (0.5 * max(0, sin(2 * .pi * 3 * progress(of: act, at: now))) - target.lookY) * swell
+                case .doze:
+                    let p = progress(of: act, at: now)
+                    if p > 0.86 {
+                        target.wide = 1.25
+                    } else {
+                        target.open = 1 - 0.9 * swell
+                        target.lookY += (0.35 - target.lookY) * swell
+                        target.sleepy = swell
+                    }
+                case .yawn:
+                    target.open = 1 - 0.95 * swell
+                    target.wide = 1 + 0.1 * swell
                 default: break
                 }
             }
@@ -340,6 +406,15 @@ struct BotMotion: Sendable {
         face.wide += (target.wide - face.wide) * eyes
         face.happy += (target.happy - face.happy) * eyes
         face.lean += (target.lean - face.lean) * eyes
+        face.sweat += (target.sweat - face.sweat) * eyes
+        face.sleepy += (target.sleepy - face.sleepy) * eyes
+        face.dots += (target.dots - face.dots) * eyes
+        if let act {
+            let p = progress(of: act, at: now)
+            if act.kind == .sweat { face.sweatFall = p }
+            if act.kind == .doze { face.zRise = (2 * p).truncatingRemainder(dividingBy: 1) }
+            if act.kind == .think { face.dotStep = (6 * p).truncatingRemainder(dividingBy: 3) }
+        }
 
         var lid = target.open
         if let every {
@@ -359,7 +434,8 @@ struct BotMotion: Sendable {
         blinking = abs(lid - face.open) > 0.01 || blinks.contains { now >= $0 && now - $0 < 0.17 }
         following = abs(target.look - face.look) > 0.004 || abs(target.lookY - face.lookY) > 0.004
             || abs(target.wide - face.wide) > 0.004 || abs(target.happy - face.happy) > 0.01
-            || abs(target.lean - face.lean) > 0.01
+            || abs(target.lean - face.lean) > 0.01 || abs(target.sweat - face.sweat) > 0.01
+            || abs(target.sleepy - face.sleepy) > 0.01 || abs(target.dots - face.dots) > 0.01
     }
 
     private mutating func keep(age: TimeInterval, now: TimeInterval, dt: TimeInterval) {
@@ -385,8 +461,19 @@ struct BotMotion: Sendable {
     // MARK: Acts
 
     private mutating func pick(at now: TimeInterval) -> Act {
-        var pool: [(Act.Kind, Double)] = [(.glance, 5), (.blinkTwice, 2), (.squint, 2), (.widen, 2), (.smile, 2),
-                                          (.inspect, 2), (.tilt, 3), (.stretch, 2), (.wiggle, 2)]
+        var pool: [(Act.Kind, Double)]
+        if phase == .working {
+            // Busy: mostly the work itself, with the odd look round.
+            pool = [(.type, 6), (.sweat, 3), (.think, 3), (.nod, 2), (.glance, 2), (.inspect, 2), (.blinkTwice, 1),
+                    (.squint, 1), (.wiggle, 1)]
+        } else if phase == .idle {
+            // Nothing to do: it lazes about.
+            pool = [(.doze, 4), (.yawn, 3), (.glance, 3), (.smile, 2), (.tilt, 2), (.stretch, 2), (.wiggle, 2),
+                    (.blinkTwice, 1)]
+        } else {
+            pool = [(.glance, 5), (.blinkTwice, 2), (.squint, 2), (.widen, 2), (.smile, 2),
+                    (.inspect, 2), (.tilt, 3), (.stretch, 2), (.wiggle, 2)]
+        }
         if spin != 0 { pool.append((.turn, 3)) }
         var roll = random.unit() * pool.reduce(0) { $0 + $1.1 }
         var kind = pool[0].0
@@ -406,10 +493,20 @@ struct BotMotion: Sendable {
         case .stretch: length = 0.55
         case .wiggle: length = 0.6
         case .turn: length = 0.7
+        case .type: length = 1.6 + random.unit() * 0.8
+        case .sweat: length = 1.9
+        case .think: length = 2.0 + random.unit() * 0.6
+        case .nod: length = 1.0
+        case .doze: length = 3.0
+        case .yawn: length = 1.6
         }
         let angle = random.unit() * 2 * .pi
         return Act(kind: kind, start: now, length: length, side: random.unit() < 0.5 ? -1 : 1,
                    gaze: CGPoint(x: cos(angle), y: sin(angle) * 0.7), from: turn)
+    }
+
+    private func progress(of act: Act, at now: TimeInterval) -> CGFloat {
+        CGFloat(max(0, min(1, (now - act.start) / act.length)))
     }
 
     // MARK: Curves

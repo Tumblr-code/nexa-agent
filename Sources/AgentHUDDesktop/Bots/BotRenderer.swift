@@ -16,6 +16,7 @@ enum BotRenderer {
     /// draw the same picture, so a bot that has not visibly changed is not drawn again.
     struct Look: Hashable {
         var morph, turn, open, look, lookY, wide, happy, lean, lift, scale: Int
+        var sweat, sweatFall, sleepy, zRise, dots, dotStep: Int
     }
 
     static func look(of motion: BotMotion) -> Look {
@@ -24,7 +25,9 @@ enum BotRenderer {
         return Look(morph: step(motion.morph, 60), turn: step(motion.turn, 0.5), open: step(face.open, 40),
                     look: step(face.look, 50), lookY: step(face.lookY, 50), wide: step(face.wide, 50),
                     happy: step(face.happy, 30), lean: step(face.lean, 30),
-                    lift: step(motion.kept.lift, 300), scale: step(motion.kept.scale, 60))
+                    lift: step(motion.kept.lift, 300), scale: step(motion.kept.scale, 60),
+                    sweat: step(face.sweat, 20), sweatFall: step(face.sweatFall, 40), sleepy: step(face.sleepy, 20),
+                    zRise: step(face.zRise, 40), dots: step(face.dots, 20), dotStep: Int(face.dotStep))
     }
 
     /// The island's own dark: eyes drawn in it read as cut out of any body, on the island or over a wallpaper.
@@ -252,6 +255,77 @@ enum BotRenderer {
             context.restoreGState()
         }
         eyes(spec, face: face, yaw: yaw, pitch: pitch, awake: dressed, on: context)
+        moods(spec, face: face, strength: dressed, on: context)
+    }
+
+    /// What a mood adds outside the eyes: a bead of sweat, the "z"s of a doze, the "…" of a thought. Drawn in
+    /// white edged with the island's dark, so each reads on the body and on any wallpaper.
+    private static func moods(_ spec: BotSpec, face: BotFace, strength: CGFloat, on context: CGContext) {
+        let center = spec.center, radius = spec.radius
+        func edged(_ path: CGPath, width: CGFloat) {
+            context.addPath(path)
+            context.setStrokeColor(ink)
+            context.setLineWidth(width * 2.2)
+            context.setLineJoin(.round)
+            context.setLineCap(.round)
+            context.strokePath()
+        }
+        if face.sweat > 0.02 {
+            // A drop at the upper side of the head, running down as the act goes on.
+            let size = radius * 0.38 * face.sweat
+            let x = center.x + radius * 0.82, y = center.y - radius * 0.55 + radius * 0.45 * face.sweatFall
+            let drop = CGMutablePath()
+            drop.move(to: CGPoint(x: x, y: y - size))
+            drop.addQuadCurve(to: CGPoint(x: x + size * 0.55, y: y + size * 0.25), control: CGPoint(x: x + size * 0.5, y: y - size * 0.2))
+            drop.addArc(center: CGPoint(x: x, y: y + size * 0.25), radius: size * 0.55, startAngle: 0, endAngle: .pi, clockwise: false)
+            drop.addQuadCurve(to: CGPoint(x: x, y: y - size), control: CGPoint(x: x - size * 0.5, y: y - size * 0.2))
+            context.saveGState()
+            context.setAlpha(strength * min(1, face.sweat * 1.4))
+            edged(drop, width: radius * 0.03)
+            context.addPath(drop)
+            context.setFillColor(CGColor(srgbRed: 0.62, green: 0.85, blue: 1, alpha: 1))
+            context.fillPath()
+            context.restoreGState()
+        }
+        if face.sleepy > 0.02 {
+            // Two "z"s rising from beside the head, the second smaller and behind the first.
+            for (index, offset) in [(0, 0.0), (1, 0.5)] as [(Int, CGFloat)] {
+                let rise = (face.zRise + offset).truncatingRemainder(dividingBy: 1)
+                let size = radius * (index == 0 ? 0.44 : 0.32) * (0.7 + 0.3 * rise)
+                let x = center.x + radius * (0.8 + 0.45 * rise), y = center.y - radius * (0.5 + 0.75 * rise)
+                let z = CGMutablePath()
+                z.move(to: CGPoint(x: x - size / 2, y: y - size / 2))
+                z.addLine(to: CGPoint(x: x + size / 2, y: y - size / 2))
+                z.addLine(to: CGPoint(x: x - size / 2, y: y + size / 2))
+                z.addLine(to: CGPoint(x: x + size / 2, y: y + size / 2))
+                context.saveGState()
+                context.setAlpha(strength * face.sleepy * (1 - rise * 0.7))
+                let width = radius * 0.07
+                edged(z, width: width)
+                context.addPath(z)
+                context.setStrokeColor(.white)
+                context.setLineWidth(width)
+                context.strokePath()
+                context.restoreGState()
+            }
+        }
+        if face.dots > 0.02 {
+            // "…" above the head, one dot lit after another.
+            let step = radius * 0.36, dot = radius * 0.125
+            let y = center.y - radius * 1.18
+            for index in 0..<3 {
+                let x = center.x + radius * 0.25 + CGFloat(index) * step
+                let lit = Int(face.dotStep) == index
+                let rect = CGRect(x: x - dot, y: y - dot, width: dot * 2, height: dot * 2)
+                context.saveGState()
+                context.setAlpha(strength * face.dots * (lit ? 1 : 0.55))
+                context.setFillColor(ink)
+                context.fillEllipse(in: rect.insetBy(dx: -dot * 0.45, dy: -dot * 0.45))
+                context.setFillColor(.white)
+                context.fillEllipse(in: lit ? rect.insetBy(dx: -dot * 0.15, dy: -dot * 0.15) : rect)
+                context.restoreGState()
+            }
+        }
     }
 
     /// The soft pieces a body wears, kept to its outline: a fringe, a scarf. Sizes are in body radii from
