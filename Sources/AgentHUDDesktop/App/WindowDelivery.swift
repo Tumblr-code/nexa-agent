@@ -2,58 +2,72 @@ import AppKit
 import AgentHUDCore
 import ApplicationServices
 
-/// Sends a quick reply into the Claude app's own conversation, so it is the same conversation everywhere: the session
-/// is opened in the app, the text is pasted into its message field and sent with Return, exactly as if typed there.
-/// A message sent while the session is working is queued by the app as usual.
+/// Sends a quick reply into the agent app's own conversation — the Claude app or Codex — so it is the same
+/// conversation everywhere: the session is opened in the app, the text is pasted into its message field and sent with
+/// Return, exactly as if typed there. A message sent while the session is working is queued by the app as usual.
 ///
 /// Typing into another app needs Nexa Agent to be trusted for Accessibility. The clipboard is restored afterwards.
 @MainActor
-enum ClaudeWindowDelivery {
-    static let bundleID = "com.anthropic.claudefordesktop"
+enum WindowDelivery {
+    /// The app that shows a session, by where the session lives.
+    static func bundleID(for target: SessionNavigationTarget) -> String? {
+        switch target {
+        case .claudeDesktopSession: return "com.anthropic.claudefordesktop"
+        case .codexThread: return "com.openai.codex"
+        default: return nil
+        }
+    }
+
+    static func appName(for target: SessionNavigationTarget) -> String {
+        if case .codexThread = target { return "Codex" }
+        return "Claude"
+    }
 
     enum Failure: Error, Equatable {
-        case notTrusted
-        case notOpened
-        case noField
+        case notTrusted(String)
+        case notOpened(String)
+        case noField(String)
 
         var message: String {
             switch self {
-            case .notTrusted:
-                return L10n.text("需要在 系统设置 → 隐私与安全性 → 辅助功能 里允许 Nexa Agent，才能把消息送进 Claude 窗口。",
-                                 "Allow Nexa Agent in System Settings → Privacy & Security → Accessibility to send into the Claude window.")
-            case .notOpened: return L10n.text("没能打开 Claude 里的这个对话", "Couldn't open this conversation in Claude")
-            case .noField: return L10n.text("没找到 Claude 的输入框，请在 Claude 里发送", "Couldn't find Claude's message field; send it in Claude")
+            case .notTrusted(let app):
+                return L10n.text("需要在 系统设置 → 隐私与安全性 → 辅助功能 里允许 Nexa Agent，才能把消息送进 \(app) 窗口。",
+                                 "Allow Nexa Agent in System Settings → Privacy & Security → Accessibility to send into the \(app) window.")
+            case .notOpened(let app): return L10n.text("没能打开 \(app) 里的这个对话", "Couldn't open this conversation in \(app)")
+            case .noField(let app): return L10n.text("没找到 \(app) 的输入框，请在 \(app) 里发送", "Couldn't find \(app)'s message field; send it in \(app)")
             }
         }
     }
 
-    /// Whether this session lives in the Claude app, where a reply can go into its own window.
+    /// Whether this session lives in an agent app whose own window a reply can go into.
     static func handles(_ target: SessionNavigationTarget?) -> Bool {
-        if case .claudeDesktopSession = target { return true }
-        return false
+        guard let target else { return false }
+        return bundleID(for: target) != nil
     }
 
     static func send(_ text: String, to target: SessionNavigationTarget) async throws {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty else { throw QuickReply.Failure.emptyMessage }
+        let app = appName(for: target)
+        guard let bundle = bundleID(for: target) else { throw Failure.notOpened(app) }
         guard AXIsProcessTrusted() else {
             // The value of kAXTrustedCheckOptionPrompt, spelled out: the global is not concurrency-safe in Swift 6.
             _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
-            throw Failure.notTrusted
+            throw Failure.notTrusted(app)
         }
-        guard await SessionNavigator.open(target) else { throw Failure.notOpened }
-        guard let app = await frontmostClaude() else { throw Failure.notOpened }
+        guard await SessionNavigator.open(target) else { throw Failure.notOpened(app) }
+        guard let running = await frontmost(bundle) else { throw Failure.notOpened(app) }
         // The conversation's view settles after the app comes forward.
         try? await Task.sleep(for: .milliseconds(700))
-        guard focusMessageField(of: app) else { throw Failure.noField }
+        guard focusMessageField(of: running) else { throw Failure.noField(app) }
         try? await Task.sleep(for: .milliseconds(120))
         await paste(message)
         try? await Task.sleep(for: .milliseconds(150))
         press(36)  // Return sends.
     }
 
-    /// The Claude app once it is in front, waiting up to three seconds for the link to bring it there.
-    private static func frontmostClaude() async -> NSRunningApplication? {
+    /// The app once it is in front, waiting up to three seconds for the link to bring it there.
+    private static func frontmost(_ bundleID: String) async -> NSRunningApplication? {
         for _ in 0..<30 {
             if let app = NSWorkspace.shared.frontmostApplication, app.bundleIdentifier == bundleID { return app }
             try? await Task.sleep(for: .milliseconds(100))

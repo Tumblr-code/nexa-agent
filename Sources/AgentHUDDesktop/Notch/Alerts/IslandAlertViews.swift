@@ -406,7 +406,7 @@ struct QuickReplyBar: View {
     let sessionID: String
     /// The name shown to the user.
     let agentName: String
-    /// Where the session lives: a Claude app conversation gets the message in its own window.
+    /// Where the session lives: a Claude app or Codex conversation gets the message in its own window.
     var target: SessionNavigationTarget? = nil
     /// Takes the keyboard as soon as it shows: for a chat the user just opened, not for a reminder that arrived.
     var focusesOnAppear = false
@@ -482,8 +482,8 @@ struct QuickReplyBar: View {
         Task { @MainActor in
             do {
                 let delivery: QuickReply.Delivery
-                if vendor == "Claude", let target, ClaudeWindowDelivery.handles(target) {
-                    try await ClaudeWindowDelivery.send(text, to: target)
+                if let target, WindowDelivery.handles(target) {
+                    try await WindowDelivery.send(text, to: target)
                     delivery = .live
                 } else {
                     delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
@@ -493,7 +493,7 @@ struct QuickReplyBar: View {
                 state = .sent(delivery)
             } catch let failure as QuickReply.Failure {
                 state = .failed(failure.message)
-            } catch let failure as ClaudeWindowDelivery.Failure {
+            } catch let failure as WindowDelivery.Failure {
                 state = .failed(failure.message)
             } catch {
                 state = .failed(L10n.text("发送失败：\(error.localizedDescription)", "Not sent: \(error.localizedDescription)"))
