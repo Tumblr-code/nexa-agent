@@ -79,6 +79,7 @@ final class ScreenHUD {
     private var previewPlacement: ScreenPlacement?
     /// The grip along the strip, kept when the queue turns onto another edge.
     private var dragGrabFraction: CGFloat = 0.5
+    private var dragGrabDepth: CGFloat = 0
     /// The mark the pointer was last over, on a dock that separates its agents.
     private var hoveredMark: String?
 
@@ -768,8 +769,16 @@ final class ScreenHUD {
             let run = geometry.edge.isHorizontal ? geometry.rect.width : geometry.rect.height
             let grip = geometry.edge.isHorizontal ? point.x - geometry.rect.minX : geometry.rect.maxY - point.y
             dragGrabFraction = min(1, max(0, grip / run))
+            // How far into the HUD, measured from its edge side, the pointer took hold of it.
+            switch geometry.edge {
+            case .top: dragGrabDepth = geometry.rect.maxY - point.y
+            case .bottom: dragGrabDepth = point.y - geometry.rect.minY
+            case .left: dragGrabDepth = point.x - geometry.rect.minX
+            case .right: dragGrabDepth = geometry.rect.maxX - point.x
+            }
         } else {
             dragGrabFraction = 0.5
+            dragGrabDepth = 0
         }
         previewPlacement = placement
         if previewPlacement?.mode == .notch { previewPlacement?.mode = .logos }
@@ -787,7 +796,8 @@ final class ScreenHUD {
         guard let current = previewPlacement else { return }
         previewPlacement = NotchGeometry.dragPlacement(at: point, screenFrame: geometry.screenFrame,
                                                        queue: dockSize(for: current), placement: current,
-                                                       grabFraction: dragGrabFraction)
+                                                       grabFraction: dragGrabFraction, grabDepth: dragGrabDepth,
+                                                       floats: true)
         apply(animated: false)
     }
 
@@ -1213,7 +1223,8 @@ final class ScreenHUD {
         // queue so every cell's nearest point is straight above it and the field falls vertically. The glow
         // panel then clips that field back to the queue's own column, cutting off the ends that would dip.
         let parked = geometry.mode.isDocked && !expanded
-        let backdrop = parked && geometry.mode == .logos
+        // A queue floating away from its edge has no edge for the curtain to fall from.
+        let backdrop = parked && geometry.mode == .logos && geometry.inset == 0
         // Only a silhouette is worth rimming. A logo queue has none — its glow is the backdrop behind the
         // marks — so once the panel or an event has grown over the place that field belonged, it stops
         // rather than following the new shape around.

@@ -118,7 +118,7 @@ struct SettingsView: View {
         .background(theme.windowBackground)
         .foregroundStyle(theme.text)
         .font(.ui(13))
-        .tint(Color.accentColor)
+        .tint(Theme.accent)
         .id(settings.settings.language)
     }
 
@@ -194,7 +194,7 @@ struct SettingsSidebar: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 9)
-            .background(selected ? Color.accentColor : .clear, in: RoundedRectangle(cornerRadius: 9))
+            .background(selected ? Theme.accent : .clear, in: RoundedRectangle(cornerRadius: 9))
             .foregroundStyle(selected ? .white : theme.sidebarText)
             .contentShape(Rectangle())
         }

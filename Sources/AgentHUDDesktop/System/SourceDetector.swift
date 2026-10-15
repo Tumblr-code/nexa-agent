@@ -50,7 +50,6 @@ enum SourceDetector {
         let engine = ClaudeEngineLocator.find(home: home, fileManager: fileManager)
         let claudeReady = engine != nil || fileManager.fileExists(atPath: home.appendingPathComponent(".claude/projects").path)
         let codexReady = CodexLocator.find() != nil
-        let deepseekReady = DeepSeekLocator.isInstalled()
         let claudeDetail: String
         if engine != nil {
             claudeDetail = L10n.text("额度、会话与用量统计", "Quota, sessions and usage")
@@ -59,6 +58,7 @@ enum SourceDetector {
         } else {
             claudeDetail = L10n.text("安装并登录后读取用量", "Reads usage once installed and signed in")
         }
+        // Nexa Agent connects Claude Code and Codex only.
         return [
             SourceStatus(
                 id: "claude-code", name: "Claude",
@@ -72,23 +72,6 @@ enum SourceDetector {
                     : L10n.text("安装并登录后读取用量", "Reads usage once installed and signed in"),
                 state: codexReady ? .installed : .notDetected
             ),
-            SourceStatus(id: "deepseek", name: "DeepSeek",
-                         detail: deepseekReady
-                             ? L10n.text("Harness 会话、API 余额与费用", "Harness sessions, API balance and costs")
-                             : L10n.text("启动 Harness 后读取用量", "Reads usage after starting Harness"),
-                         state: deepseekReady ? .installed : .notDetected),
-        ] + AdditionalSource.allCases.flatMap { source -> [SourceStatus] in
-            let status = SourceStatus(id: source.rawValue, name: source == .grok ? "Grok CLI" : source.vendor,
-                                     detail: source == .grok ? L10n.text("本地会话与用量", "Local sessions and usage") : source.detail,
-                                     state: source.isInstalled(home: home) ? .installed : .notDetected,
-                                     provider: source.vendor)
-            guard source == .grok else { return [status] }
-            return [status, SourceStatus(id: "grok-bot", name: "Grok Bot",
-                detail: L10n.text("本机缓存会话、额度与用量；实时状态暂不可读", "Cached sessions, quota and usage; live status unavailable"),
-                state: GrokBotLocator.isInstalled(home: home) ? .installed : .notDetected,
-                provider: "Grok", supportsLiveStatus: false)]
-        } + OpenAgentSource.allCases.map {
-            SourceStatus(id: $0.rawValue, name: $0.name, detail: $0.detail, state: $0.isInstalled(home: home) ? .installed : .notDetected)
-        }
+        ]
     }
 }

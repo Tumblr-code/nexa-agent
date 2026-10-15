@@ -1,0 +1,18 @@
+Nexa Agent
+Copyright 2026 Nexa
+
+This product is a modified version of Agent HUD Open
+(https://github.com/jazzenchen/agent-hud-open), licensed under the
+Apache License, Version 2.0. See LICENSE for the license text and
+THIRD_PARTY_NOTICES.txt for bundled third-party components.
+
+Changes from the original, made in 2026 by Nexa:
+- Renamed to Nexa Agent (bundle identifier app.nexa.agent), with the
+  Nexa icon, palette and accent colour, and Simplified Chinese by default.
+- Watches Claude Code and Codex only; no data is read and no hooks or
+  observers are installed for any other client.
+- Docked HUDs can float anywhere on the desktop and remember the spot,
+  snapping onto an edge when dropped close to it; a floating HUD opens
+  from where it stands.
+- Finds the Claude desktop app's own Claude Code engine.
+- Builds with the Xcode Command Line Tools alone (no SwiftUI @Entry macro).

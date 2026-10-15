@@ -39,8 +39,12 @@ extension Font {
     }
 }
 
-/// Design tokens for the dark and light window chrome. The island/glow always use `.island` (dark).
+/// Design tokens for the dark and light window chrome, in the Nexa brand's paper and ink neutrals. The island/glow
+/// always use `.island` (dark).
 struct Theme {
+    /// The Nexa brand accent.
+    static let accent = Color(hex: 0xf15436)
+
     /// Chooses the status palette variant.
     private let isLight: Bool
     let windowBackground: Color
@@ -83,46 +87,46 @@ struct Theme {
 
     static let dark = Theme(
         isLight: false,
-        windowBackground: Color(hex: 0x282828),
-        sidebarBackground: Color(hex: 0x1f1f1f),
-        sidebarBorder: Color.white.opacity(0.08),
-        inputBackground: Color(hex: 0x1c1c1e),
-        text: Color(hex: 0xf5f5f7),
-        secondary: Color(hex: 0x98989d),
-        tertiary: Color(hex: 0x6e6e73),
-        card: Color.white.opacity(0.05),
-        cardBorder: Color.white.opacity(0.12),
-        divider: Color.white.opacity(0.10),
-        track: Color.white.opacity(0.12),
-        rowBackground: Color.white.opacity(0.05),
+        windowBackground: Color(hex: 0x202020),
+        sidebarBackground: Color(hex: 0x171717),
+        sidebarBorder: Color(hex: 0x4d4946).opacity(0.6),
+        inputBackground: Color(hex: 0x282927),
+        text: Color(hex: 0xf3f1ed),
+        secondary: Color(hex: 0xb2aea9),
+        tertiary: Color(hex: 0x7d7974),
+        card: Color(hex: 0x282927),
+        cardBorder: Color(hex: 0x4d4946).opacity(0.7),
+        divider: Color(hex: 0xf3f1ed).opacity(0.10),
+        track: Color(hex: 0xf3f1ed).opacity(0.12),
+        rowBackground: Color(hex: 0xf3f1ed).opacity(0.05),
         rowBorder: Color.clear,
-        sessionRowBackground: Color.white.opacity(0.04),
-        segmentBackground: Color.white.opacity(0.08),
-        segmentSelected: Color(hex: 0x5a5a5e),
-        sidebarText: Color(hex: 0xd0d0d5),
-        dotEnded: Color(hex: 0x6e6e73)
+        sessionRowBackground: Color(hex: 0xf3f1ed).opacity(0.04),
+        segmentBackground: Color(hex: 0xf3f1ed).opacity(0.08),
+        segmentSelected: Color(hex: 0x4d4946),
+        sidebarText: Color(hex: 0xdeddd8),
+        dotEnded: Color(hex: 0x7d7974)
     )
 
     static let light = Theme(
         isLight: true,
-        windowBackground: Color(hex: 0xf5f5f7),
-        sidebarBackground: Color(hex: 0xe8e8ea),
-        sidebarBorder: Color.black.opacity(0.08),
+        windowBackground: Color(hex: 0xfafafa),
+        sidebarBackground: Color(hex: 0xeeeee9),
+        sidebarBorder: Color(hex: 0x171717).opacity(0.08),
         inputBackground: Color.white,
-        text: Color(hex: 0x1d1d1f),
-        secondary: Color(hex: 0x6e6e73),
-        tertiary: Color(hex: 0x8e8e93),
+        text: Color(hex: 0x171717),
+        secondary: Color(hex: 0x737373),
+        tertiary: Color(hex: 0x9a968f),
         card: Color.white,
-        cardBorder: Color.black.opacity(0.06),
-        divider: Color.black.opacity(0.08),
-        track: Color.black.opacity(0.10),
+        cardBorder: Color(hex: 0xd3d3d3).opacity(0.8),
+        divider: Color(hex: 0x171717).opacity(0.08),
+        track: Color(hex: 0x171717).opacity(0.10),
         rowBackground: Color.white,
-        rowBorder: Color.black.opacity(0.06),
-        sessionRowBackground: Color.black.opacity(0.03),
-        segmentBackground: Color.black.opacity(0.08),
+        rowBorder: Color(hex: 0xd3d3d3).opacity(0.7),
+        sessionRowBackground: Color(hex: 0x171717).opacity(0.03),
+        segmentBackground: Color(hex: 0x171717).opacity(0.07),
         segmentSelected: Color.white,
-        sidebarText: Color(hex: 0x1d1d1f),
-        dotEnded: Color(hex: 0xaeaeb2)
+        sidebarText: Color(hex: 0x171717),
+        dotEnded: Color(hex: 0xb2aea9)
     )
 
     /// The island panel is always black with dark-mode tokens.

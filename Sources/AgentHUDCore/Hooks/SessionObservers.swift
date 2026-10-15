@@ -7,7 +7,8 @@ public enum SessionObservers {
     /// clients' files is left alone.
     public static func configure(executable: URL, enabled: Bool,
                                  home: URL = FileManager.default.homeDirectoryForCurrentUser) {
-        if enabled { installObservers(home: home) } else {
+        // Nexa Agent connects Claude Code and Codex only: no observers or hooks for other clients.
+        if !enabled {
             do { try PiSessionObserver.configure(enabled: false, home: home) }
             catch { NSLog("[AgentHUD] Pi observer setup failed: %@", error.localizedDescription) }
             do { try OpenCodeSessionObserver.configure(enabled: false, home: home) }
@@ -17,7 +18,8 @@ public enum SessionObservers {
             do { try AttentionHooks.configure(source, enabled: enabled, executable: executable, home: home) }
             catch { NSLog("[AgentHUD] Notification hook setup failed for %@: %@", source.rawValue, error.localizedDescription) }
         }
-        for source in PermissionHooks.Source.allCases where source.usesHook && source.isInstalled(home: home) {
+        for source in PermissionHooks.Source.allCases where source.usesHook && source.isInstalled(home: home)
+            && (source == .claude || source == .codex) {
             do { try PermissionHooks.configure(source, enabled: enabled, executable: executable, home: home) }
             catch { NSLog("[AgentHUD] Permission hook setup failed for %@: %@", source.rawValue, error.localizedDescription) }
         }
@@ -29,21 +31,14 @@ public enum SessionObservers {
             do { try ClaudeSessionOrigins.configure(enabled: enabled, executable: executable, home: home) }
             catch { NSLog("[AgentHUD] Claude origin hook setup failed: %@", error.localizedDescription) }
         }
-        for source in CompletionHooks.Source.allCases {
-            guard AdditionalSource(rawValue: source.rawValue)?.isInstalled(home: home) == true else { continue }
-            do { try CompletionHooks.configure(source, enabled: enabled, executable: executable, home: home) }
-            catch { NSLog("[AgentHUD] Completion hook setup failed for %@: %@", source.rawValue, error.localizedDescription) }
-        }
     }
 
     /// The vendors whose observer lives in the client's own directory — Pi's extension, OpenCode's plugin — where that
     /// directory exists. It appears the first time the client runs, so a directory new since the last look is a client
     /// run for the first time while the host was open.
+    /// Nexa Agent keeps no observer in other clients' directories, so it never sees one appear.
     public static func observedClients(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> Set<String> {
-        var vendors: Set<String> = []
-        if PiSessionObserver.isAvailable(home: home) { vendors.insert("Pi") }
-        if OpenCodeSessionObserver.isAvailable(home: home) { vendors.insert("OpenCode") }
-        return vendors
+        []
     }
 
     /// Adds the observer of every client whose directory exists, as start-up does with client hooks on.

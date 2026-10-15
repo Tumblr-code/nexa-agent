@@ -3,7 +3,14 @@ import AgentHUDCore
 
 extension EnvironmentValues {
     /// Draws one fixed moment of the grid glow effects instead of animating them (snapshots).
-    @Entry var glowFrozenTime: Double? = nil
+    var glowFrozenTime: Double? {
+        get { self[GlowFrozenTimeKey.self] }
+        set { self[GlowFrozenTimeKey.self] = newValue }
+    }
+}
+
+private struct GlowFrozenTimeKey: EnvironmentKey {
+    static let defaultValue: Double? = nil
 }
 
 /// Uses the desktop glow renderer for settings previews, onboarding and snapshots.

@@ -113,7 +113,7 @@ public struct Settings: Hashable, Codable, Sendable {
     public var launchAtLogin: Bool = true
     public var showMenuBarIcon: Bool = true
     public var appearance: AppearanceMode = .system
-    public var language: AppLanguage = .system
+    public var language: AppLanguage = .zhHans
     /// Per-screen HUD placement, keyed by the display's stable UUID. A screen missing from the map takes
     /// `ScreenPlacement.default(hasNotch:)` for its hardware, so a newly attached display needs no setup.
     public var screens: [String: ScreenPlacement] = [:]

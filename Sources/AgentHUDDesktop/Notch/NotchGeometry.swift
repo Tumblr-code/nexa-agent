@@ -13,6 +13,8 @@ struct NotchGeometry: Equatable {
     let hasNotch: Bool
     /// The collapsed HUD's rect.
     let rect: CGRect
+    /// How far the HUD stands in from its edge; 0 on the edge.
+    var inset: CGFloat = 0
     /// Convex radius of the corners that face into the screen.
     let cornerRadius: CGFloat
     let backingScale: CGFloat
@@ -40,7 +42,8 @@ struct NotchGeometry: Equatable {
         if placement.mode.isDocked, let queue {
             let rect = stripRect(queue: queue, frame: frame, placement: placement)
             return NotchGeometry(screenFrame: frame, mode: placement.mode, edge: placement.edge, hasNotch: notch != nil,
-                                 rect: rect, cornerRadius: logoCornerRadius, backingScale: scale, menuBarHeight: menuBar)
+                                 rect: rect, inset: effectiveInset(queue: queue, frame: frame, placement: placement),
+                                 cornerRadius: logoCornerRadius, backingScale: scale, menuBarHeight: menuBar)
         }
         if let notch {
             return NotchGeometry(screenFrame: frame, mode: .notch, edge: .top, hasNotch: true, rect: notch,
@@ -69,21 +72,29 @@ struct NotchGeometry: Equatable {
         // fraction of the logo and a window on a half point puts every mark on a blurred pixel boundary.
         let long = (placement.edge.isHorizontal ? queue.width : queue.height).rounded()
         let thick = placement.edge.isHorizontal ? queue.height : queue.width
+        let inset = effectiveInset(queue: queue, frame: frame, placement: placement)
         switch placement.edge {
         case .top, .bottom:
             // The notch is not avoided: a queue centred on the screen reads as centred, and sliding it off
             // to one side to clear the notch costs more than the marks the notch covers.
             let width = min(long, frame.width)
             let x = min(frame.maxX - width, max(frame.minX, frame.minX + (frame.width - width) * placement.offset))
-            let y = placement.edge == .top ? frame.maxY - thick : frame.minY
+            let y = placement.edge == .top ? frame.maxY - thick - inset : frame.minY + inset
             return CGRect(x: x, y: y, width: width, height: thick)
         case .left, .right:
             let height = min(long, frame.height)
             // Offset runs the way the edge is read: top to bottom.
             let y = min(frame.maxY - height, max(frame.minY, frame.maxY - height - (frame.height - height) * placement.offset))
-            let x = placement.edge == .left ? frame.minX : frame.maxX - thick
+            let x = placement.edge == .left ? frame.minX + inset : frame.maxX - thick - inset
             return CGRect(x: x, y: y, width: thick, height: height)
         }
+    }
+
+    /// The placement's inset, kept so the whole HUD stays on screen.
+    static func effectiveInset(queue: CGSize, frame: CGRect, placement: ScreenPlacement) -> CGFloat {
+        let thick = placement.edge.isHorizontal ? queue.height : queue.width
+        let span = placement.edge.isHorizontal ? frame.height : frame.width
+        return min(max(0, span - thick), max(0, CGFloat(placement.inset)))
     }
 
     /// Parks the queue at the edge nearest the pointer, keeping the originally grabbed point under it.
@@ -91,7 +102,8 @@ struct NotchGeometry: Equatable {
     /// uses the same available travel as `stripRect`, including the queue's own length. `queue` is measured
     /// in the existing placement's orientation; its run stays the same when the queue turns onto a side.
     static func dragPlacement(at point: CGPoint, screenFrame: CGRect, queue: CGSize,
-                              placement: ScreenPlacement, grabFraction: CGFloat = 0.5) -> ScreenPlacement {
+                              placement: ScreenPlacement, grabFraction: CGFloat = 0.5,
+                              grabDepth: CGFloat = 0, floats: Bool = false) -> ScreenPlacement {
         func distance(to edge: HUDEdge) -> CGFloat {
             switch edge {
             case .top: return abs(screenFrame.maxY - point.y)
@@ -101,8 +113,13 @@ struct NotchGeometry: Equatable {
             }
         }
         // Starting from the current edge keeps an exact diagonal tie stable while dragging.
-        let edge = HUDEdge.allCases.reduce(placement.edge) { nearest, candidate in
+        var edge = HUDEdge.allCases.reduce(placement.edge) { nearest, candidate in
             distance(to: candidate) < distance(to: nearest) ? candidate : nearest
+        }
+        // A floating HUD stays a row anywhere on the desktop, opening up or down towards the screen's middle;
+        // it turns into a column only when it is taken right onto a side.
+        if floats, !edge.isHorizontal, distance(to: edge) > snapDistance {
+            edge = point.y > screenFrame.midY ? .top : .bottom
         }
         let run = (placement.edge.isHorizontal ? queue.width : queue.height).rounded()
         let length = edge.isHorizontal ? screenFrame.width : screenFrame.height
@@ -115,8 +132,14 @@ struct NotchGeometry: Equatable {
         if result.mode == .notch { result.mode = .logos }
         result.edge = edge
         result.offset = travel > 0 ? Double(min(1, max(0, origin / travel))) : 0.5
+        // A floating HUD stays where it is dropped; close to an edge it snaps onto it.
+        let depth = distance(to: edge) - grabDepth
+        result.inset = floats && depth > snapDistance ? Double(depth) : 0
         return result
     }
+
+    /// Within this many points of an edge, a dropped HUD parks on it.
+    static let snapDistance: CGFloat = 16
 
     var centerX: CGFloat { rect.midX }
     var top: CGFloat { screenFrame.maxY }
@@ -146,15 +169,16 @@ struct NotchGeometry: Equatable {
         let height = min(size.height, screenFrame.height)
         let x = min(screenFrame.maxX - width, max(screenFrame.minX, centerX - width / 2))
         let y = min(screenFrame.maxY - height, max(screenFrame.minY, rect.midY - height / 2))
+        // A floating HUD opens from where it stands, kept on screen.
         switch edge {
         case .top:
-            return CGRect(x: x, y: screenFrame.maxY - height, width: width, height: height)
+            return CGRect(x: x, y: max(screenFrame.minY, screenFrame.maxY - inset - height), width: width, height: height)
         case .bottom:
-            return CGRect(x: x, y: screenFrame.minY, width: width, height: height)
+            return CGRect(x: x, y: min(screenFrame.maxY - height, screenFrame.minY + inset), width: width, height: height)
         case .left:
-            return CGRect(x: screenFrame.minX, y: y, width: width, height: height)
+            return CGRect(x: min(screenFrame.maxX - width, screenFrame.minX + inset), y: y, width: width, height: height)
         case .right:
-            return CGRect(x: screenFrame.maxX - width, y: y, width: width, height: height)
+            return CGRect(x: max(screenFrame.minX, screenFrame.maxX - inset - width), y: y, width: width, height: height)
         }
     }
 }

@@ -23,9 +23,9 @@ jobs:
         run: scripts/build-app.sh release
       - name: Verify local signature and resources
         run: |
-          codesign --verify --deep --strict "build/Agent HUD Open.app"
-          bundle="build/Agent HUD Open.app/Contents/Resources/AgentHUDOpen_AgentHUDDesktop.bundle"
+          codesign --verify --deep --strict "build/Nexa Agent.app"
+          bundle="build/Nexa Agent.app/Contents/Resources/AgentHUDOpen_AgentHUDDesktop.bundle"
           test -f "$bundle/claude.png" || test -f "$bundle/Contents/Resources/claude.png"
-          test ! -e "build/Agent HUD Open.app/Contents/embedded.provisionprofile"
-          xcrun vtool -show-build "build/Agent HUD Open.app/Contents/MacOS/Agent HUD Open" \
+          test ! -e "build/Nexa Agent.app/Contents/embedded.provisionprofile"
+          xcrun vtool -show-build "build/Nexa Agent.app/Contents/MacOS/Nexa Agent" \
             | awk '/minos/ { minos = $2 } /sdk/ { sdk = $2 } END { exit sdk == minos }'

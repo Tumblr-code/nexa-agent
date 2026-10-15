@@ -149,7 +149,7 @@ struct SliderRow: View {
         HStack(spacing: 12) {
             Text(label).frame(width: 150, alignment: .leading)
             Slider(value: Binding(get: { pendingValue ?? value }, set: { pendingValue = $0 }), in: range, step: step)
-                .tint(Color.accentColor)
+                .tint(Theme.accent)
                 .controlSize(.small)
                 .accessibilityLabel(label)
                 .accessibilityValue(format(displayedValue))

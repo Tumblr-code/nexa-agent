@@ -29,7 +29,7 @@ final class HUDDragWindowController {
         panel = OverlayPanel(frame: .zero,
                              level: NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 3),
                              acceptsMouse: true)
-        panel.title = "Move Agent HUD"
+        panel.title = "Move Nexa Agent"
         panel.contentView = surface
         surface.autoresizingMask = [.width, .height]
         surface.setAccessibilityLabel(L10n.text("拖动 HUD", "Move HUD"))

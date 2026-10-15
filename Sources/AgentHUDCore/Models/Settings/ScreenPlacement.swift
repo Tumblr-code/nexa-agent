@@ -51,6 +51,9 @@ public struct ScreenPlacement: Hashable, Codable, Sendable {
     /// The queue's centre along its edge, as a fraction of that edge's length, so it survives a
     /// resolution change.
     public var offset: Double
+    /// How far a docked HUD stands in from its edge, in points: 0 parks it on the edge, more lets it float
+    /// anywhere on the desktop. It still opens away from the nearest edge.
+    public var inset: Double
     public var logoSize: Double
     public var logoEdgeDistance: Double
     public var gapScale: Double
@@ -73,6 +76,7 @@ public struct ScreenPlacement: Hashable, Codable, Sendable {
         mode: HUDMode = .logos,
         edge: HUDEdge = .top,
         offset: Double = 0.5,
+        inset: Double = 0,
         logoSize: Double = 20,
         logoEdgeDistance: Double = 2,
         gapScale: Double = 0.4,
@@ -87,6 +91,7 @@ public struct ScreenPlacement: Hashable, Codable, Sendable {
         self.mode = mode
         self.edge = edge
         self.offset = Self.clamp(offset, to: 0...1)
+        self.inset = Self.clamp(inset, to: 0...100_000)
         self.logoSize = Self.clamp(logoSize, to: Self.logoSizeRange)
         self.logoEdgeDistance = Self.clamp(logoEdgeDistance, to: Self.logoEdgeDistanceRange)
         self.gapScale = Self.clamp(gapScale, to: Self.gapScaleRange)
@@ -101,7 +106,7 @@ public struct ScreenPlacement: Hashable, Codable, Sendable {
 
     /// A display's starting point: a notched screen keeps its island, anything else shows the queue.
     public static func `default`(hasNotch: Bool) -> ScreenPlacement {
-        ScreenPlacement(mode: hasNotch ? .notch : .logos)
+        hasNotch ? ScreenPlacement(mode: .notch) : ScreenPlacement(mode: .simple, inset: 48, simpleSize: 28)
     }
 
     private static func clamp(_ value: Double, to range: ClosedRange<Double>) -> Double {
@@ -109,7 +114,7 @@ public struct ScreenPlacement: Hashable, Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case mode, edge, offset, logoSize, logoEdgeDistance, gapScale, showsLogos
+        case mode, edge, offset, inset, logoSize, logoEdgeDistance, gapScale, showsLogos
         case simpleSize, ringWidth, showsRings, showsNumbers, simpleBots, separatesAgents
     }
 
@@ -120,6 +125,7 @@ public struct ScreenPlacement: Hashable, Codable, Sendable {
             mode: (try? c.decodeIfPresent(HUDMode.self, forKey: .mode)) ?? d.mode,
             edge: (try? c.decodeIfPresent(HUDEdge.self, forKey: .edge)) ?? d.edge,
             offset: try c.decodeIfPresent(Double.self, forKey: .offset) ?? d.offset,
+            inset: try c.decodeIfPresent(Double.self, forKey: .inset) ?? d.inset,
             logoSize: try c.decodeIfPresent(Double.self, forKey: .logoSize) ?? d.logoSize,
             logoEdgeDistance: try c.decodeIfPresent(Double.self, forKey: .logoEdgeDistance) ?? d.logoEdgeDistance,
             gapScale: try c.decodeIfPresent(Double.self, forKey: .gapScale) ?? d.gapScale,

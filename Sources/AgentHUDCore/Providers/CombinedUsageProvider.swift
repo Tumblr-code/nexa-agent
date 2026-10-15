@@ -62,15 +62,11 @@ public struct CombinedUsageProvider: UsageProvider {
     public static func standard(settings: SettingsStore, ledger: UsageLedger = .open(), persistent: Bool = true) -> CombinedUsageProvider {
         if persistent { removeLegacyCaches(in: AppSupport.directory) }
         let routineRuns = GrokBotRoutineRuns(fileURL: persistent ? AppSupport.directory.appendingPathComponent("grok-bot-routine-runs.json") : nil)
+        // Nexa Agent watches Claude Code and Codex only.
         return CombinedUsageProvider([
             Source("Claude", ClaudeCodeProvider.standard(ledger: ledger, persistent: persistent)),
             Source("Codex", CodexUsageProvider.standard(ledger: ledger, persistent: persistent)),
-            Source("DeepSeek", DeepSeekUsageProvider.standard(ledger: ledger)),
-        ] + AdditionalSource.allCases.map {
-            Source($0.vendor, AdditionalUsageProvider.standard($0, settings: settings, ledger: ledger, persistHistory: persistent,
-                                                               grokBotRoutineRuns: $0 == .cursor ? routineRuns : nil))
-        } + [Source("Open agents", OpenAgentUsageProvider.standard(ledger: ledger, persistHistory: persistent))],
-            ledger: ledger, grokBotRoutineRuns: routineRuns)
+        ], ledger: ledger, grokBotRoutineRuns: routineRuns)
     }
 
     public func refreshAccountUsage(historyHours: Int) async {

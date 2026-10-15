@@ -1,5 +1,5 @@
-APP := build/Agent HUD Open.app
-BIN := $(APP)/Contents/MacOS/Agent HUD Open
+APP := build/Nexa Agent.app
+BIN := $(APP)/Contents/MacOS/Nexa Agent
 SNAPSHOT_DIR ?= build/snapshots
 
 .PHONY: build test check run demo snapshot clean

@@ -92,15 +92,15 @@ struct ScreensPane: View {
                     SegmentOption(value: HUDMode.logos, label: L10n.text("动态", "Dynamic")),
                 ], selection: modeBinding, theme: theme)
             }
-            Text(L10n.text("直接拖动可见的 HUD。拖动刘海会切换为「动态」。",
-                           "Drag the visible HUD directly. Dragging the notch switches to Dynamic."))
+            Text(L10n.text("按住 HUD 拖到桌面任意位置，松手即停在那里；离屏幕边缘很近时会吸附到边上。拖动刘海会切换为「动态」。",
+                           "Drag the HUD anywhere on the desktop and it stays where you drop it; close to an edge it snaps onto it. Dragging the notch switches to Dynamic."))
                 .font(.ui(11)).foregroundStyle(theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16).padding(.bottom, 12)
             SettingsDivider(theme: theme)
             SettingRow(label: L10n.text("位置", "Position"),
-                       subtitle: L10n.text("回到这块屏幕的顶部安全位置。", "Return to a reachable position at the top of this display.")) {
+                       subtitle: L10n.text("回到这块屏幕的顶部正中。", "Return to the top centre of this display.")) {
                 Button(L10n.text("重置位置", "Reset Position"), action: resetPosition)
                     .controlSize(.small)
                     .accessibilityIdentifier("hud-reset-position")
@@ -186,10 +186,10 @@ struct ScreensPane: View {
     private var subtitle: String {
         guard let current else { return "" }
         if placement.mode == .simple {
-            return L10n.text("贴着屏幕边缘的悬浮面板，没有背景光晕。", "A floating panel on a screen edge, with no glow behind it.")
+            return L10n.text("可以放在桌面任意位置的悬浮面板，没有背景光晕。", "A floating panel you can put anywhere on the desktop, with no glow behind it.")
         }
         if placement.mode == .logos {
-            return L10n.text("贴着屏幕边缘停靠，向屏幕内展开。", "Dock on a screen edge and open inward.")
+            return L10n.text("一排 Agent 标志，可放在桌面任意位置；贴在边缘时背后有光晕。", "A row of agent logos you can put anywhere; docked on an edge it has a glow behind it.")
         }
         return current.hasNotch
             ? L10n.text("围绕这块屏幕的刘海显示。", "Use this display's physical notch.")
@@ -201,6 +201,7 @@ struct ScreensPane: View {
         guard let current else { return }
         var next = placement
         next.edge = .top
+        next.inset = 0
         // A short queue at top centre can disappear behind the physical notch.
         next.offset = current.hasNotch && next.mode.isDocked ? 0 : 0.5
         settings.update { $0.screens[current.key] = next }

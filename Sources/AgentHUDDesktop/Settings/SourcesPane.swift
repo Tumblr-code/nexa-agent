@@ -136,7 +136,7 @@ private struct AgentProviderRow: View {
             .accessibilityAddTraits(selected ? .isSelected : [])
         }
         .padding(.horizontal, 6)
-        .background(selected ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
+        .background(selected ? Theme.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
         .onDrop(of: [UTType.text], delegate: ReorderDropDelegate(target: .group(group.id), dragging: $dragging, settings: settings))
     }
 }
@@ -349,7 +349,7 @@ private struct AgentLiveStatusSettings: View {
     }
 }
 
-/// Pi and OpenCode report finished turns only through the file Agent HUD keeps in them, and a client reads that file only
+/// Pi and OpenCode report finished turns only through the file Nexa Agent keeps in them, and a client reads that file only
 /// when it starts, so the row says whether the file is in place, when it last reported, and what an open client needs.
 struct ClientObserverStatus {
     let label: String
@@ -364,7 +364,7 @@ struct ClientObserverStatus {
             label = L10n.text("Pi 扩展", "Pi extension")
             file = PiSessionObserver.fileState()
             last = report?.turns.filter { $0.provider == "Pi" }.map { Date(timeIntervalSince1970: Double($0.observedAtMs) / 1000) }.max()
-            taken = L10n.text("agent-hud.ts 已被其他扩展使用，Agent HUD 不会动它。", "agent-hud.ts belongs to another extension, which Agent HUD leaves alone.")
+            taken = L10n.text("agent-hud.ts 已被其他扩展使用，Nexa Agent 不会动它。", "agent-hud.ts belongs to another extension, which Nexa Agent leaves alone.")
             open = L10n.text("已经开着的 Pi 输入一次 /reload 后开始报告", "Pi sessions already open report after /reload")
             unsupported = PiSessionObserver.unsupportedVersion().map {
                 let first = PiSessionObserver.firstSettlingRelease
@@ -374,7 +374,7 @@ struct ClientObserverStatus {
             label = L10n.text("OpenCode 插件", "OpenCode plugin")
             file = OpenCodeSessionObserver.fileState()
             last = report?.completions.filter { $0.vendor == "OpenCode" }.map(\.completedAt).max()
-            taken = L10n.text("agent-hud.js 已被其他插件使用，Agent HUD 不会动它。", "agent-hud.js belongs to another plugin, which Agent HUD leaves alone.")
+            taken = L10n.text("agent-hud.js 已被其他插件使用，Nexa Agent 不会动它。", "agent-hud.js belongs to another plugin, which Nexa Agent leaves alone.")
             open = L10n.text("已经开着的 OpenCode 重开后开始报告", "OpenCode already open reports once restarted")
             unsupported = nil
         default: return nil
@@ -388,7 +388,7 @@ struct ClientObserverStatus {
             detail = taken
         case .missing:
             state = L10n.text("未安装", "Not installed")
-            detail = L10n.text("Agent HUD 下次启动时安装。", "Installed when Agent HUD next starts.")
+            detail = L10n.text("Nexa Agent 下次启动时安装。", "Installed when Nexa Agent next starts.")
         case .installed:
             state = L10n.text("已安装", "Installed")
             if let unsupported {

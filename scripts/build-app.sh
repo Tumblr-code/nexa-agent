@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${1:-debug}"
 case "$CONFIG" in debug|release) ;; *) echo "Usage: $0 [debug|release]" >&2; exit 2;; esac
-APP_NAME="Agent HUD Open"
+APP_NAME="Nexa Agent"
 APP_DIR="$ROOT/build/$APP_NAME.app"
 MIN_MACOS=14.0
 BUILD_FLAGS=(--package-path "$ROOT" --disable-sandbox -c "$CONFIG")
@@ -26,15 +26,16 @@ cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleDevelopmentRegion</key><string>en</string>
-  <key>CFBundleDisplayName</key><string>Agent HUD Open</string>
-  <key>CFBundleExecutable</key><string>Agent HUD Open</string>
-  <key>CFBundleIdentifier</key><string>app.agenthud.open</string>
+  <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+  <key>CFBundleDisplayName</key><string>Nexa Agent</string>
+  <key>CFBundleExecutable</key><string>Nexa Agent</string>
+  <key>CFBundleIdentifier</key><string>app.nexa.agent</string>
+  <key>AgentHUDDataDirectory</key><string>Nexa Agent</string>
   <key>CFBundleIconFile</key><string>AppIcon.icns</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-  <key>CFBundleName</key><string>Agent HUD Open</string>
+  <key>CFBundleName</key><string>Nexa Agent</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.5.3</string>
+  <key>CFBundleShortVersionString</key><string>1.0.0</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
@@ -45,6 +46,6 @@ cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"
-codesign --force --sign - --identifier app.agenthud.open "$APP_DIR" >&2
+codesign --force --sign - --identifier app.nexa.agent "$APP_DIR" >&2
 codesign --verify --deep --strict "$APP_DIR" >&2
 printf '%s\n' "$APP_DIR"

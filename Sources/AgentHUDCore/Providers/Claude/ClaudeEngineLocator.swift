@@ -19,6 +19,17 @@ public enum ClaudeEngineLocator {
             }
             list += sorted.map { versions.appendingPathComponent($0) }
         }
+        // The Claude desktop app keeps its own engine as an app bundle: claude-code/<version>/<build>/claude.app.
+        let desktop = home.appendingPathComponent("Library/Application Support/Claude/claude-code", isDirectory: true)
+        if let names = try? FileManager.default.contentsOfDirectory(atPath: desktop.path) {
+            for version in names.filter({ !$0.hasPrefix(".") }).sorted(by: { $0.compare($1, options: .numeric) == .orderedDescending }) {
+                let builds = (try? FileManager.default.contentsOfDirectory(atPath: desktop.appendingPathComponent(version).path)) ?? []
+                list += builds.filter { !$0.hasPrefix(".") }.map {
+                    desktop.appendingPathComponent(version).appendingPathComponent($0)
+                        .appendingPathComponent("claude.app/Contents/MacOS/claude")
+                }
+            }
+        }
         return list + Executables.onPath("claude", path: path)
     }
 

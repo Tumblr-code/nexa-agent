@@ -4,7 +4,14 @@ import SwiftUI
 
 extension EnvironmentValues {
     /// Whether marks show bots while working and occasionally while idle. Off, every mark stays a logo.
-    @Entry var botLogos: Bool = true
+    var botLogos: Bool {
+        get { self[BotLogosKey.self] }
+        set { self[BotLogosKey.self] = newValue }
+    }
+}
+
+private struct BotLogosKey: EnvironmentKey {
+    static let defaultValue: Bool = true
 }
 
 /// One bot on screen: a layer whose picture follows the bot's look and whose transform follows how it sits.

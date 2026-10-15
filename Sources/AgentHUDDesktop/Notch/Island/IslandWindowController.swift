@@ -16,7 +16,7 @@ final class IslandWindowController {
 
     init(frame: CGRect, rootView: IslandRootView) {
         panel = OverlayPanel(frame: frame, level: NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1), acceptsMouse: true)
-        panel.title = "Agent HUD Island"
+        panel.title = "Nexa Agent Island"
         hosting = TrackingHostingView(rootView: rootView)
         hosting.sizingOptions = []
         hosting.frame = CGRect(origin: .zero, size: frame.size)
