@@ -59,7 +59,17 @@ struct HoverPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
             if height != nil {
-                ScrollView(.vertical) { measuredContent }
+                ScrollViewReader { reader in
+                    ScrollView(.vertical) { measuredContent }
+                        // A quick chat opened below the fold scrolls into view with its field.
+                        .onChange(of: chattingSessionID) { _, id in
+                            guard let id else { return }
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(80))
+                                withAnimation(.easeOut(duration: 0.2)) { reader.scrollTo(SessionQuickChat.anchor(id), anchor: .bottom) }
+                            }
+                        }
+                }
             } else {
                 measuredContent
             }
@@ -250,6 +260,7 @@ struct HoverPanelView: View {
                 SessionQuickChat(session: session, vendor: vendor,
                                  agentName: store.sessionSource(session).agentVendor ?? vendor)
                     .padding(.top, 4)
+                    .id(SessionQuickChat.anchor(session.id))
             }
         }
     }
@@ -466,6 +477,8 @@ struct HoverPanelView: View {
 
 /// A listed session's last answer and a field for the next message, opened under its row.
 struct SessionQuickChat: View {
+    static func anchor(_ sessionID: String) -> String { "quick-chat-" + sessionID }
+
     let session: LiveSession
     let vendor: String
     let agentName: String
@@ -475,12 +488,12 @@ struct SessionQuickChat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let reply {
-                ReplyText(text: reply, maxHeight: 200)
+                ReplyText(text: reply, maxHeight: 150)
             } else if loaded {
                 Text(L10n.text("还没有读到回复", "No reply read yet"))
                     .font(.ui(11)).foregroundStyle(.white.opacity(0.45))
             }
-            QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName)
+            QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName, focusesOnAppear: true)
         }
         .padding(10)
         .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))

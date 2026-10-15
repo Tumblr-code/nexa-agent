@@ -277,6 +277,9 @@ struct IslandTextField: NSViewRepresentable {
     let onChange: (String) -> Void
     let onSubmit: () -> Void
     let onTyping: @MainActor (Bool) -> Void
+    /// Takes the keyboard once the field is on screen. Only for a field the user has just asked for: a card that
+    /// arrives by itself never catches keys typed elsewhere.
+    var focusesOnAppear = false
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -297,6 +300,14 @@ struct IslandTextField: NSViewRepresentable {
         field.stringValue = text
         field.onFocus = { [coordinator = context.coordinator] in coordinator.focused() }
         field.onBlur = { [coordinator = context.coordinator] field in coordinator.blurred(field) }
+        if focusesOnAppear {
+            Task { @MainActor [weak field] in
+                try? await Task.sleep(for: .milliseconds(150))
+                guard let field, let panel = field.window as? OverlayPanel else { return }
+                panel.takeKeyboard()
+                panel.makeFirstResponder(field)
+            }
+        }
         return field
     }
 

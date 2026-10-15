@@ -372,6 +372,8 @@ struct QuickReplyBar: View {
     let sessionID: String
     /// The name shown to the user.
     let agentName: String
+    /// Takes the keyboard as soon as it shows: for a chat the user just opened, not for a reminder that arrived.
+    var focusesOnAppear = false
     @Environment(\.islandTyping) private var islandTyping
     @State private var draft = ""
     @State private var state: SendState = .idle
@@ -391,7 +393,8 @@ struct QuickReplyBar: View {
                     placeholder: L10n.text("回复 \(agentName)…（回车发送）", "Reply to \(agentName)… (Return sends)"),
                     onChange: { draft = $0 },
                     onSubmit: send,
-                    onTyping: islandTyping
+                    onTyping: islandTyping,
+                    focusesOnAppear: focusesOnAppear
                 )
                 .id(fieldID)
                 .frame(height: 16)
