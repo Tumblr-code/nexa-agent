@@ -137,6 +137,20 @@ final class PermissionAlertTests: XCTestCase {
         XCTAssertEqual(b.questions.filter { $0.id == "first" }.count, 1, "a request is shown once")
     }
 
+    func testANewerReplyReplacesTheSameConversationsOlderOne() {
+        func reply(_ session: String, _ turn: String) -> IslandAlert {
+            .completion(SessionCompletion(sessionID: session, vendor: "Claude", turnID: turn, task: "Task",
+                                          model: "opus", startedAt: nil, completedAt: Date()))
+        }
+        let queue = IslandAlertQueue()
+        XCTAssertTrue(queue.show(reply("a", "1"), inUsagePanel: false))
+        XCTAssertFalse(queue.show(reply("b", "1"), inUsagePanel: false), "another conversation waits its turn")
+        XCTAssertTrue(queue.show(reply("a", "2"), inUsagePanel: false), "the same conversation's reply takes the place of the one on screen")
+        XCTAssertEqual(queue.current?.alert.id, reply("a", "2").id)
+        XCTAssertFalse(queue.show(reply("b", "2"), inUsagePanel: false))
+        XCTAssertEqual(queue.sessionEvents.map(\.id), [reply("a", "2").id, reply("b", "2").id], "one reminder per conversation")
+    }
+
     func testNewsStillExpiresOnItsOwn() async throws {
         let queue = IslandAlertQueue()
         var expired = 0

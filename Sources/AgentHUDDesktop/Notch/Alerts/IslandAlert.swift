@@ -107,6 +107,15 @@ final class IslandAlertQueue {
 
     /// Shows `alert` now and returns true, or queues it behind the current alert and returns false.
     func show(_ alert: IslandAlert, inUsagePanel: Bool) -> Bool {
+        // A session's newer reply replaces its older one, on screen or waiting: one reminder per conversation.
+        if case .completion(let reply) = alert {
+            pending.removeAll { if case .completion(let older) = $0 { return older.sessionID == reply.sessionID }; return false }
+            if let showing = current, case .completion(let older) = showing.alert, older.sessionID == reply.sessionID {
+                current = Presentation(alert: alert, inUsagePanel: showing.inUsagePanel)
+                scheduleExpiry()
+                return true
+            }
+        }
         guard current == nil else {
             // Replies remain available beside a waiting request; quota news cannot interrupt that request.
             if current?.alert.isPersistent == true && !alert.isSessionEvent { return false }

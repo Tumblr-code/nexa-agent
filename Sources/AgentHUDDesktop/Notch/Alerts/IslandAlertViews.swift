@@ -143,11 +143,20 @@ struct IslandEventPanelView: View {
         return values.filter { seen.insert($0.id).inserted }
     }
 
+    /// The other conversations' latest replies: one row per session, none for the session of the open card.
     private var replies: [SessionCompletion] {
-        events.compactMap { event in
-            guard case .completion(let reply) = event, reply.id != alert.id else { return nil }
-            return reply
+        var openSession: String?
+        if case .completion(let open) = alert { openSession = open.sessionID }
+        var latest: [String: SessionCompletion] = [:], order: [String] = []
+        for event in events {
+            guard case .completion(let reply) = event, reply.id != alert.id, reply.sessionID != openSession else { continue }
+            if let kept = latest[reply.sessionID] {
+                if reply.completedAt > kept.completedAt { latest[reply.sessionID] = reply }
+            } else {
+                latest[reply.sessionID] = reply; order.append(reply.sessionID)
+            }
         }
+        return order.compactMap { latest[$0] }
     }
 
     var body: some View {
