@@ -108,6 +108,9 @@ final class BotFormTests: XCTestCase {
         motion.staysBot = true
         var now: TimeInterval = 0
         while now < 3 { motion.step(to: now); now += 1.0 / 30 }
+        // Wait out any act in progress (a doze closes the eyes slowly): only a bot at rest is checked.
+        while motion.wait != BotPace.calm, now < 60 { motion.step(to: now); now += 1.0 / 30 }
+        XCTAssertEqual(motion.wait, BotPace.calm)
         let settled = BotRenderer.look(of: motion)
         motion.step(to: now + 1.0 / 30)
         XCTAssertEqual(BotRenderer.look(of: motion), settled)

@@ -292,7 +292,8 @@ enum BotRenderer {
             for (index, offset) in [(0, 0.0), (1, 0.5)] as [(Int, CGFloat)] {
                 let rise = (face.zRise + offset).truncatingRemainder(dividingBy: 1)
                 let size = radius * (index == 0 ? 0.44 : 0.32) * (0.7 + 0.3 * rise)
-                let x = center.x + radius * (0.8 + 0.45 * rise), y = center.y - radius * (0.5 + 0.75 * rise)
+                // Kept beside the head rather than above it: the queue's window has little room over its marks.
+                let x = center.x + radius * (0.85 + 0.35 * rise), y = center.y - radius * (0.45 + 0.5 * rise)
                 let z = CGMutablePath()
                 z.move(to: CGPoint(x: x - size / 2, y: y - size / 2))
                 z.addLine(to: CGPoint(x: x + size / 2, y: y - size / 2))
@@ -311,10 +312,11 @@ enum BotRenderer {
         }
         if face.dots > 0.02 {
             // "…" above the head, one dot lit after another.
-            let step = radius * 0.36, dot = radius * 0.125
-            let y = center.y - radius * 1.18
+            // At the top right of the head, within the room the queue's window keeps round its marks.
+            let step = radius * 0.32, dot = radius * 0.12
             for index in 0..<3 {
-                let x = center.x + radius * 0.25 + CGFloat(index) * step
+                let x = center.x + radius * 0.45 + CGFloat(index) * step
+                let y = center.y - radius * (0.98 - 0.12 * CGFloat(index))
                 let lit = Int(face.dotStep) == index
                 let rect = CGRect(x: x - dot, y: y - dot, width: dot * 2, height: dot * 2)
                 context.saveGState()
