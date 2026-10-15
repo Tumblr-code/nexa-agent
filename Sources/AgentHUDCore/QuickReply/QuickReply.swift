@@ -43,17 +43,56 @@ public enum QuickReply {
 
     public static func send(_ text: String, to completion: SessionCompletion,
                             home: URL = FileManager.default.homeDirectoryForCurrentUser) async throws -> Delivery {
+        try await send(text, vendor: completion.vendor, sessionID: completion.sessionID, home: home)
+    }
+
+    /// - vendor: "Claude" or "Codex", the session's own client.
+    public static func send(_ text: String, vendor: String, sessionID: String,
+                            home: URL = FileManager.default.homeDirectoryForCurrentUser) async throws -> Delivery {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty else { throw Failure.emptyMessage }
-        switch completion.vendor {
+        switch vendor {
         case "Codex":
-            return try await CodexQuickReply.send(message, threadID: completion.sessionID, home: home)
+            return try await CodexQuickReply.send(message, threadID: sessionID, home: home)
         case "Claude":
-            try ClaudeQuickReply.send(message, sessionID: completion.sessionID, home: home)
+            try ClaudeQuickReply.send(message, sessionID: sessionID, home: home)
             return .background
         default:
-            throw Failure.unsupported(completion.agentVendor)
+            throw Failure.unsupported(vendor)
         }
+    }
+
+    /// The session's last visible answer, read from the end of its log: the newest assistant text in a Claude Code
+    /// transcript, the newest agent message in a Codex rollout.
+    public static func lastReply(vendor: String, transcriptPath: String) -> String? {
+        guard let handle = FileHandle(forReadingAtPath: transcriptPath) else { return nil }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        let window: UInt64 = 2 * 1024 * 1024
+        try? handle.seek(toOffset: size > window ? size - window : 0)
+        let tail = (try? handle.readToEnd()) ?? Data()
+        for line in tail.split(separator: 0x0A).reversed() {
+            guard let object = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { continue }
+            let text: String?
+            switch vendor {
+            case "Claude":
+                guard object["type"] as? String == "assistant", object["isSidechain"] as? Bool != true,
+                      let content = (object["message"] as? [String: Any])?["content"] as? [[String: Any]] else { continue }
+                text = content.filter { $0["type"] as? String == "text" }.compactMap { $0["text"] as? String }
+                    .joined(separator: "\n\n")
+            case "Codex":
+                guard object["type"] as? String == "event_msg", let payload = object["payload"] as? [String: Any] else { continue }
+                switch payload["type"] as? String {
+                case "agent_message": text = payload["message"] as? String
+                case "task_complete": text = payload["last_agent_message"] as? String
+                default: continue
+                }
+            default:
+                return nil
+            }
+            if let reply = SessionCompletion.wholeReply(text) { return reply }
+        }
+        return nil
     }
 
     /// A GUI app starts with a minimal environment; a client run on its behalf needs a usable PATH and HOME. Variables a

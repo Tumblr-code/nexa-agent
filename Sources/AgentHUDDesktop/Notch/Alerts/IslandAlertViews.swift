@@ -100,7 +100,7 @@ struct IslandAlertDetailView: View {
                     }
                 }
                 if QuickReply.supports(vendor: event.vendor) {
-                    QuickReplyBar(completion: event)
+                    QuickReplyBar(vendor: event.vendor, sessionID: event.sessionID, agentName: event.agentVendor)
                 }
                 HStack {
                     Text(event.completedAt.formatted(date: .omitted, time: .shortened))
@@ -330,8 +330,9 @@ private struct TurnEndedSymbol: View {
 }
 
 /// The whole reply, scrolling once it is taller than the card should grow, and selectable for copying.
-private struct ReplyText: View {
+struct ReplyText: View {
     let text: String
+    var maxHeight: CGFloat = 280
 
     var body: some View {
         ScrollView(.vertical) {
@@ -343,7 +344,7 @@ private struct ReplyText: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .scrollIndicators(.automatic)
-        .frame(maxHeight: 280)
+        .frame(maxHeight: maxHeight)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier("island-alert-reply")
     }
@@ -356,8 +357,12 @@ private struct ReplyText: View {
 }
 
 /// Answers the session from the card: Return sends, and the next reply arrives as the session's next reminder.
-private struct QuickReplyBar: View {
-    let completion: SessionCompletion
+struct QuickReplyBar: View {
+    /// The session's own client, "Claude" or "Codex".
+    let vendor: String
+    let sessionID: String
+    /// The name shown to the user.
+    let agentName: String
     @Environment(\.islandTyping) private var islandTyping
     @State private var draft = ""
     @State private var state: SendState = .idle
@@ -374,7 +379,7 @@ private struct QuickReplyBar: View {
             HStack(spacing: 8) {
                 IslandTextField(
                     text: draft,
-                    placeholder: L10n.text("回复 \(completion.agentVendor)…（回车发送）", "Reply to \(completion.agentVendor)… (Return sends)"),
+                    placeholder: L10n.text("回复 \(agentName)…（回车发送）", "Reply to \(agentName)… (Return sends)"),
                     onChange: { draft = $0 },
                     onSubmit: send,
                     onTyping: islandTyping
@@ -409,10 +414,10 @@ private struct QuickReplyBar: View {
     private var note: String? {
         switch state {
         case .idle, .sending: return nil
-        case .sent(.live): return L10n.text("已发送到 \(completion.agentVendor)，回复好了会显示在这里。",
-                                           "Sent to \(completion.agentVendor); its reply will show here.")
-        case .sent(.background): return L10n.text("已在后台发送，回复好了会显示在这里（\(completion.agentVendor) 窗口不会实时显示这一轮）。",
-                                                 "Sent in the background; the reply will show here (the \(completion.agentVendor) window won't show this turn live).")
+        case .sent(.live): return L10n.text("已发送到 \(agentName)，回复好了会显示在这里。",
+                                           "Sent to \(agentName); its reply will show here.")
+        case .sent(.background): return L10n.text("已在后台发送，回复好了会显示在这里（\(agentName) 窗口不会实时显示这一轮）。",
+                                                 "Sent in the background; the reply will show here (the \(agentName) window won't show this turn live).")
         case .failed(let reason): return reason
         }
     }
@@ -428,7 +433,7 @@ private struct QuickReplyBar: View {
         state = .sending
         Task { @MainActor in
             do {
-                let delivery = try await QuickReply.send(text, to: completion)
+                let delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
                 draft = ""
                 fieldID = UUID()
                 state = .sent(delivery)

@@ -105,6 +105,8 @@ struct IslandRootView: View {
     /// The screen owner supplies the same expansion to visible content and natural-height measurement.
     var answeringSessionID: String? = nil
     var onAnswerSession: (String?) -> Void = { _ in }
+    var chattingSessionID: String? = nil
+    var onChatSession: (String?) -> Void = { _ in }
     /// Replies and requests share the event surface while quota and tokens keep their own panel.
     var sessionEvents: [IslandAlert] = []
     /// Brings one of the stacked requests to the front.
@@ -443,6 +445,7 @@ struct IslandRootView: View {
                            waitingRequests: waitingRequests,
                            insets: hidesSilhouette ? dockInsets : HoverPanelView.notchInsets,
                            answeringSessionID: answeringSessionID, onAnswerSession: onAnswerSession,
+                           chattingSessionID: chattingSessionID, onChatSession: onChatSession,
                            focusVendor: focusVendor)
                 .frame(width: detached ? IslandController.agentPanelWidth : IslandController.expandedWidth, alignment: .top)
                 .fixedSize(horizontal: false, vertical: true)

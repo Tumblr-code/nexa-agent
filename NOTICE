@@ -18,4 +18,5 @@ Changes from the original, made in 2026 by Nexa:
 - Reply reminders show the whole reply and answer the session from the
   card: Codex Desktop starts the turn itself over its local IPC, other
   Codex threads and Claude Code sessions are resumed in the background.
+  The panel's session rows open the same quick chat on demand.
 - Builds with the Xcode Command Line Tools alone (no SwiftUI @Entry macro).
