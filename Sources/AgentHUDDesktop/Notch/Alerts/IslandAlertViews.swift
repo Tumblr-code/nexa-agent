@@ -343,13 +343,18 @@ private struct TurnEndedSymbol: View {
 struct ReplyText: View {
     let text: String
     var maxHeight: CGFloat = 280
+    /// The most characters shown, from the end: a reply opens at its end, and laying out all of a very long one
+    /// stalls the panel as it opens.
+    var tail = 6_000
+    /// Rendered once per text rather than on every pass of the view.
+    @State private var rendered: AttributedString?
 
     var body: some View {
         // Like a chat: it opens at the end of the reply, beside the field, and stays there as the reply changes.
         ScrollViewReader { reader in
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
-                    Text(Self.rendered(text))
+                    Text(rendered ?? AttributedString(Self.shown(text, tail: tail)))
                         .font(.ui(12)).foregroundStyle(.white.opacity(0.82))
                         .lineSpacing(3)
                         .textSelection(.enabled)
@@ -360,6 +365,11 @@ struct ReplyText: View {
             }
             .onAppear { scrollToEnd(reader) }
             .onChange(of: text) { _, _ in scrollToEnd(reader) }
+            .task(id: text) {
+                let shown = Self.shown(text, tail: tail)
+                rendered = await Task.detached(priority: .userInitiated) { Self.rendered(shown) }.value
+                scrollToEnd(reader)
+            }
         }
         .scrollIndicators(.automatic)
         .frame(maxHeight: maxHeight)
@@ -378,8 +388,12 @@ struct ReplyText: View {
         }
     }
 
+    nonisolated static func shown(_ text: String, tail: Int) -> String {
+        text.count > tail ? "…" + String(text.suffix(tail)) : text
+    }
+
     /// Replies are Markdown; inline styles render, and the line structure (lists, code blocks) is kept as written.
-    static func rendered(_ text: String) -> AttributedString {
+    nonisolated static func rendered(_ text: String) -> AttributedString {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
     }
