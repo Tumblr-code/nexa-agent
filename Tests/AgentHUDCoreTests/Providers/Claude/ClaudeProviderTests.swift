@@ -457,7 +457,7 @@ final class ClaudeTranscriptTests: XCTestCase {
         XCTAssertNil(FastTranscriptParser.parseLine(line("thinking", "weighing it up"))?.text, "reasoning is not a visible answer")
 
         // A long answer costs a bounded read and is cut where the escape and the character both allow it.
-        let long = String(repeating: "写完了 \"ok\"\n", count: 400)
+        let long = String(repeating: "写完了 \"ok\"\n", count: 2000)
         let escaped = String(decoding: try JSONSerialization.data(withJSONObject: [long]), as: UTF8.self).dropFirst(2).dropLast(2)
         let cut = try XCTUnwrap(FastTranscriptParser.parseLine(line("text", String(escaped), id: "msg_3"))?.text)
         XCTAssertLessThanOrEqual(cut.utf8.count, FastTranscriptParser.messageLength)

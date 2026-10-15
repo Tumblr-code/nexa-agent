@@ -142,7 +142,8 @@ final class PermissionAlertTests: XCTestCase {
         var expired = 0
         queue.onExpire = { expired += 1 }
         XCTAssertTrue(queue.show(completion(), inUsagePanel: false))
-        try await Task.sleep(for: IslandAlertQueue.visibleDuration + .milliseconds(200))
+        // A reply stays long enough to be read and answered.
+        try await Task.sleep(for: IslandAlertQueue.replyDuration + .milliseconds(200))
         XCTAssertEqual(expired, 1)
     }
 
