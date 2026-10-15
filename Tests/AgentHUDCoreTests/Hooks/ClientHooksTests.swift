@@ -55,14 +55,14 @@ final class ClientHooksTests: XCTestCase, @unchecked Sendable {
         }
         XCTAssertEqual(try ProviderJSON.read(Data(contentsOf: claude))["hooks"]["Notification"].arrayValue?.first?["matcher"].stringValue,
                        "permission_prompt", "the handler taken over keeps its matcher")
-        XCTAssertEqual(try commands(qwen).count, 2, "approval and stop hooks")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: qwen.path), "Nexa Agent writes nothing into clients other than Claude Code and Codex")
 
         SessionObservers.configure(executable: executable, enabled: false, home: home)
         XCTAssertEqual(try commands(claude), ["~/bin/lint", "~/bin/prompt-log", "~/bin/session-log"])
         let removed = try ProviderJSON.read(Data(contentsOf: claude))
         XCTAssertEqual(removed["model"].stringValue, "opus")
         XCTAssertEqual(removed["hooks"]["SessionStart"].arrayValue?.first?["matcher"].stringValue, "startup|resume")
-        XCTAssertEqual(try commands(qwen), [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: qwen.path))
     }
 
     func testASettingsFileKeptAsALinkIsWrittenWhereItLeadsAndKeepsItsPermissions() throws {

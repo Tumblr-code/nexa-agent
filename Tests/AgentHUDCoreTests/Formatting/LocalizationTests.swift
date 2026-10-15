@@ -82,7 +82,7 @@ final class LocalizationTests: XCTestCase {
         let decoded = try JSONDecoder().decode(Settings.self, from: data)
         XCTAssertEqual(decoded.language, .en)
         let legacy = try JSONDecoder().decode(Settings.self, from: Data("{}".utf8))
-        XCTAssertEqual(legacy.language, .system, "settings saved before the language option default to following the system")
+        XCTAssertEqual(legacy.language, .zhHans, "Nexa Agent starts in Simplified Chinese")
     }
 
     @MainActor

@@ -365,7 +365,7 @@ final class DockDraggingTests: XCTestCase {
 
     @MainActor
     private func visibleMoveSurface() -> NSWindow? {
-        NSApp.windows.first { $0.title == "Move Agent HUD" && $0.isVisible }
+        NSApp.windows.first { $0.title == "Move Nexa Agent" && $0.isVisible }
     }
 
     @MainActor
