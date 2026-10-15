@@ -100,7 +100,8 @@ struct IslandAlertDetailView: View {
                     }
                 }
                 if QuickReply.supports(vendor: event.vendor) {
-                    QuickReplyBar(vendor: event.vendor, sessionID: event.sessionID, agentName: event.agentVendor)
+                    QuickReplyBar(vendor: event.vendor, sessionID: event.sessionID, agentName: event.agentVendor,
+                                  target: event.navigationTarget)
                 }
                 HStack {
                     Text(event.completedAt.formatted(date: .omitted, time: .shortened))
@@ -391,6 +392,8 @@ struct QuickReplyBar: View {
     let sessionID: String
     /// The name shown to the user.
     let agentName: String
+    /// Where the session lives: a Claude app conversation gets the message in its own window.
+    var target: SessionNavigationTarget? = nil
     /// Takes the keyboard as soon as it shows: for a chat the user just opened, not for a reminder that arrived.
     var focusesOnAppear = false
     @Environment(\.islandTyping) private var islandTyping
@@ -464,11 +467,19 @@ struct QuickReplyBar: View {
         state = .sending
         Task { @MainActor in
             do {
-                let delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
+                let delivery: QuickReply.Delivery
+                if vendor == "Claude", let target, ClaudeWindowDelivery.handles(target) {
+                    try await ClaudeWindowDelivery.send(text, to: target)
+                    delivery = .live
+                } else {
+                    delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
+                }
                 draft = ""
                 fieldID = UUID()
                 state = .sent(delivery)
             } catch let failure as QuickReply.Failure {
+                state = .failed(failure.message)
+            } catch let failure as ClaudeWindowDelivery.Failure {
                 state = .failed(failure.message)
             } catch {
                 state = .failed(L10n.text("发送失败：\(error.localizedDescription)", "Not sent: \(error.localizedDescription)"))

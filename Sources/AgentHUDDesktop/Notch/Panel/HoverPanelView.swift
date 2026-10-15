@@ -493,7 +493,8 @@ struct SessionQuickChat: View {
                 Text(L10n.text("还没有读到回复", "No reply read yet"))
                     .font(.ui(11)).foregroundStyle(.white.opacity(0.45))
             }
-            QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName, focusesOnAppear: true)
+            QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName,
+                          target: session.navigationTarget, focusesOnAppear: true)
         }
         .padding(10)
         .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
