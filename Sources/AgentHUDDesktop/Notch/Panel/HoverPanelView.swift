@@ -34,9 +34,6 @@ struct HoverPanelView: View {
     /// The row whose questions are open for answering here rather than in the agent.
     var answeringSessionID: String? = nil
     var onAnswerSession: (String?) -> Void = { _ in }
-    /// The session whose quick chat is open under its row, and how to open or close one.
-    var chattingSessionID: String? = nil
-    var onChatSession: (String?) -> Void = { _ in }
     /// Set on a dock that separates its agents: the panel is this one agent's, and shows nothing of the others.
     var focusVendor: String? = nil
 
@@ -59,17 +56,7 @@ struct HoverPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
             if height != nil {
-                ScrollViewReader { reader in
-                    ScrollView(.vertical) { measuredContent }
-                        // A quick chat opened below the fold scrolls into view with its field.
-                        .onChange(of: chattingSessionID) { _, id in
-                            guard let id else { return }
-                            Task { @MainActor in
-                                try? await Task.sleep(for: .milliseconds(80))
-                                withAnimation(.easeOut(duration: 0.2)) { reader.scrollTo(SessionQuickChat.anchor(id), anchor: .bottom) }
-                            }
-                        }
-                }
+                ScrollView(.vertical) { measuredContent }
             } else {
                 measuredContent
             }
@@ -229,9 +216,6 @@ struct HoverPanelView: View {
                 if !asks.isEmpty {
                     questionBadge(asks, session: session, expanded: expanded)
                 }
-                if let vendor = Self.chatVendor(session, store: store) {
-                    chatButton(session, vendor: vendor)
-                }
 
                 Button { openSessions(session.id) } label: {
                     Text(tokens)
@@ -256,34 +240,7 @@ struct HoverPanelView: View {
             if expanded {
                 questionAnswer(asks, session: session)
             }
-            if chattingSessionID == session.id, let vendor = Self.chatVendor(session, store: store) {
-                SessionQuickChat(session: session, vendor: vendor,
-                                 agentName: store.sessionSource(session).agentVendor ?? vendor)
-                    .padding(.top, 4)
-                    .id(SessionQuickChat.anchor(session.id))
-            }
         }
-    }
-
-    /// The client a quick chat goes to: Claude Code and Codex sessions, the main conversation and not a sub-agent's.
-    static func chatVendor(_ session: LiveSession, store: UsageStore) -> String? {
-        guard session.transcriptPath != nil, session.agentName == nil else { return nil }
-        let vendor = store.sessionSource(session).agentVendor
-        return vendor == "Claude" || vendor == "Codex" ? vendor : nil
-    }
-
-    private func chatButton(_ session: LiveSession, vendor: String) -> some View {
-        let open = chattingSessionID == session.id
-        return Button { onChatSession(open ? nil : session.id) } label: {
-            Image(systemName: open ? "bubble.left.fill" : "bubble.left")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(open ? Theme.accent : theme.secondary)
-                .frame(width: 18, height: 16)
-                .contentShape(Rectangle())
-        }
-        .help(open ? L10n.text("收起快捷对话", "Close quick chat") : L10n.text("在这里和它对话", "Chat with it here"))
-        .accessibilityLabel(L10n.text("快捷对话：", "Quick chat: ") + session.task)
-        .accessibilityIdentifier("island-session-chat-\(session.id)")
     }
 
     /// Back to the agent where its client names a destination; where none exists, the session's own page, so a row
@@ -472,77 +429,5 @@ struct HoverPanelView: View {
         let words = task.split(separator: " ")
         if words.count > 3 { return words.prefix(3).joined(separator: " ") }
         return String(task.prefix(14))
-    }
-}
-
-/// A listed session's latest turn as it goes, and a field for the next message, opened under its row.
-struct SessionQuickChat: View {
-    static func anchor(_ sessionID: String) -> String { "quick-chat-" + sessionID }
-    let session: LiveSession
-    let vendor: String
-    let agentName: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            LiveTurnView(vendor: vendor, sessionID: session.id, transcriptPath: session.transcriptPath, maxHeight: 150)
-            if QuickReply.supports(vendor: vendor) {
-                QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName,
-                              target: session.navigationTarget, focusesOnAppear: true)
-            } else {
-                Text(L10n.text("这里只看 \(agentName) 的进度，要回复请在 \(agentName) 里发。",
-                               "Follow \(agentName) here; reply in \(agentName) itself."))
-                    .font(.ui(11)).foregroundStyle(.white.opacity(0.45))
-            }
-        }
-        .padding(10)
-        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-    }
-}
-
-/// A session's latest turn, read from its log every second: what it is doing and what it has written so far.
-struct LiveTurnView: View {
-    let vendor: String
-    let sessionID: String
-    var transcriptPath: String?
-    var maxHeight: CGFloat = 150
-    @State private var progress: QuickReply.Progress?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let progress {
-                status(progress)
-                if let text = progress.text {
-                    ReplyText(text: text, maxHeight: maxHeight)
-                }
-            } else {
-                Text(L10n.text("正在读取…", "Reading…")).font(.ui(11)).foregroundStyle(.white.opacity(0.45))
-            }
-        }
-        .task(id: sessionID) {
-            let vendor = vendor, sessionID = sessionID, known = transcriptPath
-            while !Task.isCancelled {
-                let next = await Task.detached(priority: .utility) { () -> QuickReply.Progress? in
-                    guard let path = known ?? QuickReply.transcriptPath(vendor: vendor, sessionID: sessionID) else { return nil }
-                    return QuickReply.progress(vendor: vendor, transcriptPath: path)
-                }.value
-                if next != progress { progress = next ?? QuickReply.Progress() }
-                try? await Task.sleep(for: .seconds(1))
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func status(_ progress: QuickReply.Progress) -> some View {
-        HStack(spacing: 6) {
-            if progress.running {
-                ProgressView().controlSize(.mini).tint(Theme.accent)
-                Text(progress.activity.map { L10n.text("正在运行：", "Running: ") + $0 } ?? L10n.text("正在思考…", "Thinking…"))
-                    .lineLimit(1).truncationMode(.tail)
-            } else if progress.text != nil {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(hex: 0x4cd38a))
-                Text(L10n.text("已完成", "Done"))
-            }
-        }
-        .font(.ui(11, .medium)).foregroundStyle(.white.opacity(0.7))
     }
 }

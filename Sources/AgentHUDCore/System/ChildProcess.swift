@@ -107,14 +107,6 @@ public final class ChildProcess: @unchecked Sendable {
         try await wait(until: deadline, for: .exit)
     }
 
-    /// Closes stdin, telling a child that reads its whole input that there is no more, and leaves it running.
-    public func closeInput() {
-        queue.async { [self] in
-            try? input?.close()
-            input = nil
-        }
-    }
-
     /// Closes stdin and sends SIGTERM, then SIGKILL if the child outlives the grace period. Returns immediately.
     public func stop() {
         queue.async { [self] in

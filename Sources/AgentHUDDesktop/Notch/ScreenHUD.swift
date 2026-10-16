@@ -26,8 +26,6 @@ final class ScreenHUD {
     private var failedListedSessionID: String?
     /// One expansion per screen, shared by its live panel and the fresh view used for measuring it.
     private var answeringSessionID: String?
-    /// The listed session whose quick chat is open under its row.
-    private var chattingSessionID: String?
     private let mouseLocation: @MainActor () -> CGPoint
     private let additionalHUDControls: @MainActor (@escaping @MainActor () -> Void) -> AnyView
     private let renderMaterials: @Sendable (GlowWindowController.PreparationInputs) async -> GlowWindowController.PreparedImages
@@ -225,7 +223,6 @@ final class ScreenHUD {
         let sessionNavigationFailed: Bool
         let failedListedSessionID: String?
         let answeringSessionID: String?
-        let chattingSessionID: String?
         let reduceMotion: Bool
         let colorSpace: CGColorSpace?
     }
@@ -258,7 +255,7 @@ final class ScreenHUD {
                       alertID: activeAlert?.id, focus: focus, pinned: pinned, alertDetails: alerts.current?.inUsagePanel == false,
                       pendingIDs: alerts.pendingIDs,
                       sessionNavigationFailed: sessionNavigationFailed, failedListedSessionID: failedListedSessionID,
-                      answeringSessionID: answeringSessionID, chattingSessionID: chattingSessionID,
+                      answeringSessionID: answeringSessionID,
                       reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
                       colorSpace: glow.panel.screen?.colorSpace?.cgColorSpace)
     }
@@ -490,13 +487,6 @@ final class ScreenHUD {
         reevaluateHover()
     }
 
-    private func chat(in sessionID: String?) {
-        guard chattingSessionID != sessionID else { return }
-        stopTyping()
-        chattingSessionID = sessionID
-        apply(animated: true)
-    }
-
     private func answerQuestions(in sessionID: String?) {
         guard answeringSessionID != sessionID else { return }
         stopTyping()
@@ -655,7 +645,6 @@ final class ScreenHUD {
         } else if !machine.isOpen {
             materialPreparation = nil
             answeringSessionID = nil
-            chattingSessionID = nil
         }
         if wasOpen != machine.isOpen {
             // The panel opening is someone looking at the numbers, which is reason enough to read the accounts again.
@@ -906,8 +895,6 @@ final class ScreenHUD {
             waitingRequests: PermissionRequests.shared.pending,
             answeringSessionID: answeringSessionID,
             onAnswerSession: { [weak self] id in self?.answerQuestions(in: id) },
-            chattingSessionID: chattingSessionID,
-            onChatSession: { [weak self] id in self?.chat(in: id) },
             onSelectRequest: { [weak self] id in self?.selectRequest(id) },
             onTyping: { [weak self] typing in self?.setTyping(typing) },
             showsAlertDetails: open && alerts.current?.inUsagePanel == false,

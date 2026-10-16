@@ -99,10 +99,6 @@ struct IslandAlertDetailView: View {
                         ReplyText(text: reply)
                     }
                 }
-                if QuickReply.supports(vendor: event.vendor) {
-                    QuickReplyBar(vendor: event.vendor, sessionID: event.sessionID, agentName: event.agentVendor,
-                                  target: event.navigationTarget)
-                }
                 HStack {
                     Text(event.completedAt.formatted(date: .omitted, time: .shortened))
                     Spacer()
@@ -396,103 +392,5 @@ struct ReplyText: View {
     nonisolated static func rendered(_ text: String) -> AttributedString {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
-    }
-}
-
-/// Answers the session from the card: Return sends, and the next reply arrives as the session's next reminder.
-struct QuickReplyBar: View {
-    /// The session's own client, "Claude" or "Codex".
-    let vendor: String
-    let sessionID: String
-    /// The name shown to the user.
-    let agentName: String
-    /// Where the session lives: a Claude app conversation gets the message written into its own field.
-    var target: SessionNavigationTarget? = nil
-    /// Takes the keyboard as soon as it shows: for a chat the user just opened, not for a reminder that arrived.
-    var focusesOnAppear = false
-    @Environment(\.islandTyping) private var islandTyping
-    @State private var draft = ""
-    @State private var state: SendState = .idle
-    @State private var fieldID = UUID()
-
-    enum SendState: Equatable {
-        case idle, sending
-        case sent(QuickReply.Delivery)
-        case failed(String)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                IslandTextField(
-                    text: draft,
-                    placeholder: L10n.text("回复 \(agentName)…（回车发送）", "Reply to \(agentName)… (Return sends)"),
-                    onChange: { draft = $0 },
-                    onSubmit: send,
-                    onTyping: islandTyping,
-                    focusesOnAppear: focusesOnAppear
-                )
-                .id(fieldID)
-                .frame(height: 16)
-                .accessibilityIdentifier("island-quick-reply-field")
-                Button(action: send) {
-                    Image(systemName: state == .sending ? "ellipsis" : "arrow.up")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.black)
-                        .frame(width: 22, height: 22)
-                        .background(canSend ? Theme.accent : Color.white.opacity(0.25), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!canSend)
-                .accessibilityIdentifier("island-quick-reply-send")
-                .help(L10n.text("发送", "Send"))
-            }
-            .padding(.horizontal, 10).padding(.vertical, 7)
-            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.white.opacity(0.12), lineWidth: 1))
-            if let note {
-                Text(note).font(.ui(11)).foregroundStyle(noteColor)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            // Once sent from a reminder, the turn it starts shows here as it goes.
-            if !focusesOnAppear, case .sent = state {
-                LiveTurnView(vendor: vendor, sessionID: sessionID, maxHeight: 160)
-            }
-        }
-    }
-
-    private var canSend: Bool { state != .sending && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-
-    private var note: String? {
-        switch state {
-        case .idle, .sending: return nil
-        case .sent(.live): return L10n.text("已发到 \(agentName) 的原对话。", "Sent into \(agentName)'s conversation.")
-        case .sent(.background): return L10n.text("已在后台发送，回复好了会显示在这里（\(agentName) 窗口不会实时显示这一轮）。",
-                                                 "Sent in the background; the reply will show here (the \(agentName) window won't show this turn live).")
-        case .failed(let reason): return reason
-        }
-    }
-
-    private var noteColor: Color {
-        if case .failed = state { return Color(hex: 0xff8a7a) }
-        return .white.opacity(0.55)
-    }
-
-    private func send() {
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard canSend, !text.isEmpty else { return }
-        state = .sending
-        Task { @MainActor in
-            do {
-                let delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
-                draft = ""
-                fieldID = UUID()
-                state = .sent(delivery)
-            } catch let failure as QuickReply.Failure {
-                state = .failed(failure.message)
-            } catch {
-                state = .failed(L10n.text("发送失败：\(error.localizedDescription)", "Not sent: \(error.localizedDescription)"))
-            }
-        }
     }
 }
