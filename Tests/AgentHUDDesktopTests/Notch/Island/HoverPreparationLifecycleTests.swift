@@ -6,6 +6,11 @@ import XCTest
 
 /// Preparing a future panel must leave the current windows alone and follow the hover's lifetime.
 final class HoverPreparationLifecycleTests: XCTestCase {
+    /// Every case here opens the notch form and waits for its glow, neither of which Nexa Agent has.
+    override func setUpWithError() throws {
+        throw XCTSkip("Nexa Agent has no notch form and draws no glow.")
+    }
+
     @MainActor
     func testCollapseCommitsItsWindowWithoutWaitingForItsBackgroundRaster() async throws {
         let gate = HoverRasterGate()

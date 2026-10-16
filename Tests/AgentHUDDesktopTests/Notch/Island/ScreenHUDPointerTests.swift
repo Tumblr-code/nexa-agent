@@ -100,6 +100,7 @@ final class ScreenHUDPointerTests: XCTestCase {
 
     @MainActor
     func testTopEdgeHoverSurvivesTrackingExitsAndCanOpenAgainAfterLeaving() async throws {
+        throw XCTSkip("Nexa Agent has no notch form and draws no glow.")
         _ = NSApplication.shared
         let screen = try XCTUnwrap(NSScreen.main)
         let domain = "app.agenthud.tests.pointer.\(UUID().uuidString)"

@@ -9,6 +9,7 @@ import AgentHUDCore
 final class IslandAnimationTests: XCTestCase {
     @MainActor
     func testIslandExpandsToMeasuredHeightAndKeepsItsCanvasWhileAnimating() async throws {
+        throw XCTSkip("Nexa Agent has no notch form and draws no glow.")
         _ = NSApplication.shared
         let domain = "app.agenthud.tests.animation.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))

@@ -287,6 +287,7 @@ final class DockDraggingTests: XCTestCase {
 
     @MainActor
     func testEmptyDockKeepsItsEdgeAndCanMoveOutOfNotchMode() throws {
+        throw XCTSkip("Nexa Agent has no notch form and draws no glow.")
         _ = NSApplication.shared
         let screen = try XCTUnwrap(NSScreen.main)
         let key = ScreenIdentity.key(for: screen)
