@@ -27,7 +27,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .general: return L10n.text("设置外观、语言、启动方式和客户端回调。", "Appearance, language, startup and client hook preferences.")
         case .sources: return L10n.text("管理实时状态、套餐与显示窗口。", "Manage live status, plans and visible windows.")
-        case .display: return L10n.text("自定义灵动岛光晕与面板内容，更改自动生效。", "Customize your notch and panel. Changes apply automatically.")
+        case .display: return L10n.text("自定义悬浮条与面板内容，更改自动生效。", "Customize the HUD and its panel. Changes apply automatically.")
         }
     }
 
@@ -170,6 +170,12 @@ struct SettingsSidebar: View {
                     Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
                         .font(.ui(11)).foregroundStyle(theme.secondary)
                 }
+                Spacer(minLength: 0)
+                // There is no menu bar item, so quitting lives here.
+                Button(L10n.text("退出", "Quit")) { NSApp.terminate(nil) }
+                    .controlSize(.small)
+                    .keyboardShortcut("q", modifiers: .command)
+                    .accessibilityIdentifier("settings-quit")
             }
             .padding(12)
         }

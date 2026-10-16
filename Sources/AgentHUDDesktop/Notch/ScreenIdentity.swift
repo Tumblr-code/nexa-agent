@@ -52,10 +52,17 @@ enum ScreenIdentity {
         return CGSize(width: max(1, right - left), height: screen.safeAreaInsets.top)
     }
 
-    /// The stored placement for a screen, or the default its hardware deserves.
+    /// The stored placement for a screen, or the floating default. Nexa Agent has no notch form: a screen once set to
+    /// it shows the row of logos instead, and a notched screen starts floating like any other.
     @MainActor
     static func placement(for screen: NSScreen, in settings: AgentHUDCore.Settings) -> ScreenPlacement {
-        settings.placement(on: key(for: screen), hasNotch: hasNotch(screen))
+        placement(on: key(for: screen), in: settings)
+    }
+
+    static func placement(on key: String, in settings: AgentHUDCore.Settings) -> ScreenPlacement {
+        var placement = settings.placement(on: key, hasNotch: false)
+        if placement.mode == .notch { placement.mode = .logos }
+        return placement
     }
 
     /// The screen the pointer is on, which is the one alerts belong on.

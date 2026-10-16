@@ -50,6 +50,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         desktop.start()
     }
 
+    /// There is no menu bar item: opening the app again while it runs brings up its settings.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        MainActor.assumeIsolated { desktop?.showSettings() }
+        return false
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationWillTerminate(_ notification: Notification) { desktop?.stop() }
 }

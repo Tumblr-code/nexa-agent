@@ -34,8 +34,8 @@ struct OnboardingView: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(L10n.text("灵动岛已就绪", "Your notch is ready")).font(.ui(20, .semibold))
-                Text(L10n.text("在灵动岛查看额度和会话，随时掌握用量。", "Keep track of your usage and sessions from the notch."))
+                Text(L10n.text("Nexa Agent 已就绪", "Nexa Agent is ready")).font(.ui(20, .semibold))
+                Text(L10n.text("在桌面悬浮条上查看额度和会话，随时掌握用量。", "Keep track of your usage and sessions from the floating HUD."))
                     .font(.ui(13))
                     .foregroundStyle(theme.secondary)
             }

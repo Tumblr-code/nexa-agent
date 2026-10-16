@@ -11,7 +11,7 @@ public extension UsageStore {
             glow: settings.settings.glow(on: screen),
             light: light
         )
-        guard glowHidden else { return appearance }
+        // Nexa Agent draws no glow at all.
         return GlowAppearance(
             stops: appearance.stops, peakOpacity: appearance.peakOpacity, troughOpacity: appearance.troughOpacity,
             breathing: appearance.breathing, breathSeconds: appearance.breathSeconds, hidden: true

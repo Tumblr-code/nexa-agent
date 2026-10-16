@@ -967,8 +967,7 @@ struct MenuBarStrip: View {
     }
 }
 
-/// The collapsed HUD on a screen in logo mode. It is the settings pane's own preview, so a snapshot can
-/// never drift from what the pane shows — and both are built the way the real HUD builds its backdrop.
+/// The collapsed HUD on a screen in logo mode: the row of marks, laid along the top.
 struct LogoQueueScene: View {
     let settings: SettingsStore
     let store: UsageStore
@@ -978,9 +977,12 @@ struct LogoQueueScene: View {
     var width: CGFloat = 640
 
     var body: some View {
-        LogoQueuePreview(settings: settings, store: store, placement: placement,
-                         metrics: ScreenMetrics(menuBar: menuBar, notch: nil), marks: marks)
-            // The preview measures itself against the space it is given; a snapshot has to name one.
+        var sample = placement
+        sample.edge = .top
+        let config = LogoQueueConfig(items: marks ?? LogoQueueItem.queue(rows: store.queueVendors), placement: sample,
+                                     settings: settings.settings)
+        return LogoQueueView(config: config, light: false)
+            .frame(width: config.size.width, height: config.stripThickness)
             .frame(width: width, height: 132)
             .padding(24)
             .background(Color(white: 0.10))

@@ -38,7 +38,7 @@ struct SourcesPane: View {
                 }
                 .background(theme.card, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(theme.cardBorder.opacity(0.55), lineWidth: 1))
-                Text(L10n.text("拖动分组或窗口，调整光晕和面板中的顺序。", "Drag groups or windows to reorder the glow and panel."))
+                Text(L10n.text("拖动分组或窗口，调整悬浮条和面板中的顺序。", "Drag groups or windows to reorder the HUD and panel."))
                     .font(.ui(11)).foregroundStyle(theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 6)
@@ -193,7 +193,7 @@ private struct AgentProviderDetail: View {
             }
             if !group.agents.isEmpty {
                 SettingsSection(title: L10n.text("显示窗口", "Visible windows"),
-                                subtitle: L10n.text("拖动窗口，调整光晕和面板中的顺序。", "Drag windows to reorder the glow and panel."), theme: theme) {
+                                subtitle: L10n.text("拖动窗口，调整悬浮条和面板中的顺序。", "Drag windows to reorder the HUD and panel."), theme: theme) {
                     ForEach(windowSections) { section in
                         if let title = section.title ?? (windowSections.count > 1 ? L10n.text("其他窗口", "Other windows") : nil) {
                             Text(title).font(.ui(11, .medium)).foregroundStyle(theme.secondary)

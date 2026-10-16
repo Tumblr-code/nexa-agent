@@ -27,7 +27,7 @@ struct ScreensPane: View {
 
     private var placement: ScreenPlacement {
         guard let current else { return .default(hasNotch: false) }
-        return settings.settings.placement(on: current.key, hasNotch: current.hasNotch)
+        return ScreenIdentity.placement(on: current.key, in: settings.settings)
     }
 
     /// Edits one field of the selected screen's placement, leaving the rest as stored.
@@ -87,13 +87,12 @@ struct ScreensPane: View {
             }
             SettingRow(label: L10n.text("HUD 形态", "HUD"), subtitle: subtitle) {
                 SegmentedPills(options: [
-                    SegmentOption(value: HUDMode.notch, label: L10n.text("刘海", "Notch")),
                     SegmentOption(value: HUDMode.simple, label: L10n.text("简约", "Simple")),
                     SegmentOption(value: HUDMode.logos, label: L10n.text("动态", "Dynamic")),
                 ], selection: modeBinding, theme: theme)
             }
-            Text(L10n.text("按住 HUD 拖到桌面任意位置，松手即停在那里；离屏幕边缘很近时会吸附到边上。拖动刘海会切换为「动态」。",
-                           "Drag the HUD anywhere on the desktop and it stays where you drop it; close to an edge it snaps onto it. Dragging the notch switches to Dynamic."))
+            Text(L10n.text("按住 HUD 拖到桌面任意位置，松手即停在那里；离屏幕边缘很近时会吸附到边上。",
+                           "Drag the HUD anywhere on the desktop and it stays where you drop it; close to an edge it snaps onto it."))
                 .font(.ui(11)).foregroundStyle(theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -128,13 +127,6 @@ struct ScreensPane: View {
                 SliderRow(label: L10n.text("Logo 间距", "Logo spacing"), value: binding(\.gapScale),
                           range: ScreenPlacement.gapScaleRange, step: 0.05,
                           format: { points($0 * size) }, theme: theme)
-                SettingsDivider(theme: theme)
-                SettingsToggleRow(
-                    label: L10n.text("显示 Logo", "Show logos"),
-                    subtitle: L10n.text("关掉只留背景；背景仍占着这些 Logo 的位置和宽度。",
-                                        "Off leaves the backdrop alone, still where the logos would have been."),
-                    isOn: binding(\.showsLogos)
-                )
             }
             if placement.mode == .simple {
                 let preview = previewMeter
@@ -186,15 +178,9 @@ struct ScreensPane: View {
     private var subtitle: String {
         guard let current else { return "" }
         if placement.mode == .simple {
-            return L10n.text("可以放在桌面任意位置的悬浮面板，没有背景光晕。", "A floating panel you can put anywhere on the desktop, with no glow behind it.")
+            return L10n.text("圆环加百分比的悬浮条，可放在桌面任意位置。", "Rings and percentages you can put anywhere on the desktop.")
         }
-        if placement.mode == .logos {
-            return L10n.text("一排 Agent 标志，可放在桌面任意位置；贴在边缘时背后有光晕。", "A row of agent logos you can put anywhere; docked on an edge it has a glow behind it.")
-        }
-        return current.hasNotch
-            ? L10n.text("围绕这块屏幕的刘海显示。", "Use this display's physical notch.")
-            : L10n.text("这块屏没有刘海，刘海形态会画一条替代的黑条。",
-                        "No notch here — the notch shape draws a stand-in bar instead.")
+        return L10n.text("一排会动的 Agent 标志，可放在桌面任意位置。", "A row of agent logos you can put anywhere on the desktop.")
     }
 
     private func resetPosition() {
@@ -202,8 +188,7 @@ struct ScreensPane: View {
         var next = placement
         next.edge = .top
         next.inset = 0
-        // A short queue at top centre can disappear behind the physical notch.
-        next.offset = current.hasNotch && next.mode.isDocked ? 0 : 0.5
+        next.offset = 0.5
         settings.update { $0.screens[current.key] = next }
     }
 
