@@ -17,5 +17,8 @@ Changes from the original, made in 2026 by Nexa:
 - Finds the Claude desktop app's own Claude Code engine.
 - Reply reminders show the whole reply, opened at its end, and keep only
   the newest reminder per conversation.
+- Slimmed down: no glow, no notch form and no menu bar item. Settings
+  open from the panel's gear or by opening the app again; Quit is in the
+  settings sidebar.
 - Bots act busy while their agent works and lazy while it idles.
 - Builds with the Xcode Command Line Tools alone (no SwiftUI @Entry macro).
