@@ -485,8 +485,14 @@ struct SessionQuickChat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             LiveTurnView(vendor: vendor, sessionID: session.id, transcriptPath: session.transcriptPath, maxHeight: 150)
-            QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName,
-                          target: session.navigationTarget, focusesOnAppear: true)
+            if QuickReply.supports(vendor: vendor) {
+                QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName,
+                              target: session.navigationTarget, focusesOnAppear: true)
+            } else {
+                Text(L10n.text("这里只看 \(agentName) 的进度，要回复请在 \(agentName) 里发。",
+                               "Follow \(agentName) here; reply in \(agentName) itself."))
+                    .font(.ui(11)).foregroundStyle(.white.opacity(0.45))
+            }
         }
         .padding(10)
         .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))

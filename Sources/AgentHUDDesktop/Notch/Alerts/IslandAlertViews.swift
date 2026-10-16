@@ -484,19 +484,11 @@ struct QuickReplyBar: View {
         state = .sending
         Task { @MainActor in
             do {
-                let delivery: QuickReply.Delivery
-                if vendor == "Claude", let target, ClaudeComposer.handles(target) {
-                    try await ClaudeComposer.send(text, to: target)
-                    delivery = .live
-                } else {
-                    delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
-                }
+                let delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
                 draft = ""
                 fieldID = UUID()
                 state = .sent(delivery)
             } catch let failure as QuickReply.Failure {
-                state = .failed(failure.message)
-            } catch let failure as ClaudeComposer.Failure {
                 state = .failed(failure.message)
             } catch {
                 state = .failed(L10n.text("发送失败：\(error.localizedDescription)", "Not sent: \(error.localizedDescription)"))
