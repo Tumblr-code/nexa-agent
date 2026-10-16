@@ -4,7 +4,7 @@ import XCTest
 final class ScreenPlacementTests: XCTestCase {
     func testLogoSizeAndEdgeDistanceBoundsAreIndependentOfSpacing() throws {
         for (size, distance, expectedSize, expectedDistance) in [
-            (30.0, 0.0, 30.0, 0.0), (36, 20, 36, 20), (100, 100, 36, 20), (-1, -1, 12, 0)
+            (30.0, 0.0, 30.0, 0.0), (36, 20, 36, 20), (64, 20, 64, 20), (100, 100, 64, 20), (-1, -1, 12, 0)
         ] {
             let data = try JSONEncoder().encode(["logoSize": size, "logoEdgeDistance": distance, "gapScale": 0.35])
             let placement = try JSONDecoder().decode(ScreenPlacement.self, from: data)

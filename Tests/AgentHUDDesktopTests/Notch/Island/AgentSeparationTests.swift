@@ -38,7 +38,8 @@ final class AgentSeparationTests: XCTestCase {
         let queue = LogoQueueConfig(items: [LogoQueueItem(vendor: "Claude", isWorking: false),
                                             LogoQueueItem(vendor: "Codex", isWorking: false)],
                                     placement: ScreenPlacement(logoSize: 20, gapScale: 0.5), settings: Settings())
-        XCTAssertEqual(queue.markCentres.map(\.along), [10, 40])
+        // The card keeps its padding (`edgeDistance`, 2 by default) before the first mark.
+        XCTAssertEqual(queue.markCentres.map(\.along), [12, 42])
     }
 
     @MainActor
