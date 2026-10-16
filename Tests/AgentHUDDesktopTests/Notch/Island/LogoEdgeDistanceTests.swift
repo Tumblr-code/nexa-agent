@@ -8,7 +8,6 @@ final class LogoEdgeDistanceTests: XCTestCase {
     private let screen = CGRect(x: -1600, y: -200, width: 1600, height: 900)
 
     func testChangingLogoSizeKeepsItsVisibleEdgeAtTheConfiguredDistanceOnEveryEdgeAndScale() throws {
-        throw XCTSkip("Nexa Agent centres the logos on their card instead of holding them to the screen edge.")
         let settings = Settings()
         for edge in HUDEdge.allCases {
             for scale in [CGFloat(1), 2] {
@@ -63,7 +62,6 @@ final class LogoEdgeDistanceTests: XCTestCase {
     }
 
     func testOpeningAndClosingCanvasKeepsThirtyPointLogosAtZeroDistanceOnEveryEdge() async throws {
-        throw XCTSkip("Nexa Agent centres the logos on their card instead of holding them to the screen edge.")
         _ = NSApplication.shared
         let display = CGRect(x: -20000, y: -20000, width: 1200, height: 900)
         var settings = Settings()

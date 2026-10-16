@@ -121,7 +121,7 @@ struct ScreensPane: View {
                 SliderRow(label: L10n.text("Logo 大小", "Logo size"), value: binding(\.logoSize),
                           range: ScreenPlacement.logoSizeRange, step: 1, format: points, theme: theme)
                 SettingsDivider(theme: theme)
-                SliderRow(label: L10n.text("底座留白", "Card padding"), value: binding(\.logoEdgeDistance),
+                SliderRow(label: L10n.text("Logo 离屏幕边缘", "Logo edge distance"), value: binding(\.logoEdgeDistance),
                           range: ScreenPlacement.logoEdgeDistanceRange, step: 1, format: points, theme: theme)
                 SettingsDivider(theme: theme)
                 SliderRow(label: L10n.text("Logo 间距", "Logo spacing"), value: binding(\.gapScale),
