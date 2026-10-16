@@ -72,25 +72,28 @@ struct LogoQueueConfig: Equatable {
         bots = settings.botLogos
     }
 
-    /// The strip touches the screen edge; centring the marks within it keeps their edge at the requested distance.
+    /// The marks sit on a dark card with `edgeDistance` of room on every side.
     var stripThickness: CGFloat { logo + edgeDistance * 2 }
 
-    /// The marks' run, with their screen-edge distance perpendicular to the run.
+    /// The card: the marks' run and its room at both ends, by the strip's thickness.
     var size: CGSize {
         guard !items.isEmpty else { return .zero }
-        let run = logo * CGFloat(items.count) + gap * CGFloat(items.count - 1)
+        let run = logo * CGFloat(items.count) + gap * CGFloat(items.count - 1) + edgeDistance * 2
         return edge.isHorizontal ? CGSize(width: run, height: stripThickness) : CGSize(width: stripThickness, height: run)
     }
 
-    /// Each mark's centre along the run, measured from the run's start: left on a horizontal edge, top on a side.
+    /// The card is a capsule, like the Simple panel on one line.
+    var cornerRadius: CGFloat { stripThickness / 2 }
+
+    /// Each mark's centre along the card, measured from its start: left on a horizontal edge, top on a side.
     var markCentres: [(vendor: String, along: CGFloat)] {
-        items.enumerated().map { ($1.vendor, CGFloat($0) * (logo + gap) + logo / 2) }
+        items.enumerated().map { ($1.vendor, edgeDistance + CGFloat($0) * (logo + gap) + logo / 2) }
     }
 }
 
 /// The collapsed HUD on a screen in logo mode: every watched agent's own mark. Working marks stay bots,
 /// idle marks occasionally turn into bots, and their centres stay fixed.
-/// Status colour is carried by the glow behind them.
+/// They sit on a dark card, like the Simple panel's.
 struct LogoQueueView: NSViewRepresentable {
     let config: LogoQueueConfig
     let light: Bool
@@ -111,6 +114,8 @@ struct LogoQueueView: NSViewRepresentable {
 /// Lays stationary marks out along the edge and follows their bots through the shared clock.
 final class LogoQueueLayerView: NSView {
     private(set) var marks: [CALayer] = []
+    /// The dark card under the marks.
+    private let card = CAShapeLayer()
     /// One per mark, for the marks that have a bot. A bot's layer sits over its mark and takes its place
     /// while the bot is out; the mark comes back when the bot has settled into the logo again.
     private(set) var actors: [BotActor?] = []
@@ -127,6 +132,10 @@ final class LogoQueueLayerView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.masksToBounds = false
+        card.fillColor = NSColor.black.withAlphaComponent(SimpleMeterView.fillOpacity).cgColor
+        card.strokeColor = NSColor.white.withAlphaComponent(0.14).cgColor
+        card.lineWidth = 1
+        layer?.addSublayer(card)
     }
 
     @available(*, unavailable)
@@ -200,8 +209,16 @@ final class LogoQueueLayerView: NSView {
         let lead = max(0, ((config.edge.isHorizontal ? bounds.width : bounds.height) - run) / 2)
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        let thickness = config.stripThickness
+        let cardFrame = config.edge.isHorizontal
+            ? CGRect(x: lead, y: (bounds.height - thickness) / 2, width: run, height: thickness)
+            : CGRect(x: (bounds.width - thickness) / 2, y: lead, width: thickness, height: run)
+        card.frame = cardFrame
+        card.isHidden = marks.isEmpty
+        card.path = CGPath(roundedRect: CGRect(origin: .zero, size: cardFrame.size).insetBy(dx: 0.5, dy: 0.5),
+                           cornerWidth: config.cornerRadius, cornerHeight: config.cornerRadius, transform: nil)
         for (index, mark) in marks.enumerated() {
-            let along = lead + CGFloat(index) * step
+            let along = lead + config.edgeDistance + CGFloat(index) * step
             var origin = config.edge.isHorizontal
                 ? CGPoint(x: along, y: (bounds.height - config.logo) / 2)
                 : CGPoint(x: (bounds.width - config.logo) / 2, y: along)
@@ -210,13 +227,12 @@ final class LogoQueueLayerView: NSView {
                 let visible = CGRect(x: origin.x - bleed + alpha.minX * side,
                                      y: origin.y - bleed + alpha.minY * side,
                                      width: alpha.width * side, height: alpha.height * side)
-                // Assets carry different transparent padding. Shift only toward/away from the parked edge;
-                // the configured logo size and along-edge spacing continue to use the original artwork box.
-                switch config.edge {
-                case .top: origin.y += config.edgeDistance - visible.minY
-                case .bottom: origin.y += bounds.height - config.edgeDistance - visible.maxY
-                case .left: origin.x += config.edgeDistance - visible.minX
-                case .right: origin.x += bounds.width - config.edgeDistance - visible.maxX
+                // Assets carry different transparent padding: across the card, centre what is visible; along it,
+                // the configured logo size and spacing continue to use the original artwork box.
+                if config.edge.isHorizontal {
+                    origin.y += cardFrame.midY - visible.midY
+                } else {
+                    origin.x += cardFrame.midX - visible.midX
                 }
             }
             mark.frame = CGRect(x: origin.x - bleed, y: origin.y - bleed,

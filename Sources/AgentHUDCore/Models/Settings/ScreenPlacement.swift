@@ -36,8 +36,8 @@ public enum HUDEdge: String, Codable, Sendable, CaseIterable {
 /// `Settings.screenGlow` under the same display key, with `Settings.glow` for a display that has none.
 public struct ScreenPlacement: Hashable, Codable, Sendable {
     /// Side of one mark in points, independent of the display's menu bar height.
-    public static let logoSizeRange: ClosedRange<Double> = 12...36
-    /// Distance from the visible logo, including its outline, to its parked screen edge, in points.
+    public static let logoSizeRange: ClosedRange<Double> = 12...64
+    /// Room between the marks and the edge of the card they sit on, in points.
     public static let logoEdgeDistanceRange: ClosedRange<Double> = 0...20
     /// Gap between logos, as a share of the logo's height. A gap wider than about half a mark reads as
     /// separate marks rather than one queue.
