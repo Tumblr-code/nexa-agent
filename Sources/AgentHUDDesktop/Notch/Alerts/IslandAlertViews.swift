@@ -406,7 +406,7 @@ struct QuickReplyBar: View {
     let sessionID: String
     /// The name shown to the user.
     let agentName: String
-    /// Where the session lives: a Claude app or Codex conversation gets the message in its own window.
+    /// Where the session lives: a Claude app conversation gets the message written into its own field.
     var target: SessionNavigationTarget? = nil
     /// Takes the keyboard as soon as it shows: for a chat the user just opened, not for a reminder that arrived.
     var focusesOnAppear = false
@@ -454,6 +454,10 @@ struct QuickReplyBar: View {
                 Text(note).font(.ui(11)).foregroundStyle(noteColor)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // Once sent from a reminder, the turn it starts shows here as it goes.
+            if !focusesOnAppear, case .sent = state {
+                LiveTurnView(vendor: vendor, sessionID: sessionID, maxHeight: 160)
+            }
         }
     }
 
@@ -462,8 +466,7 @@ struct QuickReplyBar: View {
     private var note: String? {
         switch state {
         case .idle, .sending: return nil
-        case .sent(.live): return L10n.text("已发送到 \(agentName)，回复好了会显示在这里。",
-                                           "Sent to \(agentName); its reply will show here.")
+        case .sent(.live): return L10n.text("已发到 \(agentName) 的原对话。", "Sent into \(agentName)'s conversation.")
         case .sent(.background): return L10n.text("已在后台发送，回复好了会显示在这里（\(agentName) 窗口不会实时显示这一轮）。",
                                                  "Sent in the background; the reply will show here (the \(agentName) window won't show this turn live).")
         case .failed(let reason): return reason
@@ -482,8 +485,8 @@ struct QuickReplyBar: View {
         Task { @MainActor in
             do {
                 let delivery: QuickReply.Delivery
-                if let target, WindowDelivery.handles(target) {
-                    try await WindowDelivery.send(text, to: target)
+                if vendor == "Claude", let target, ClaudeComposer.handles(target) {
+                    try await ClaudeComposer.send(text, to: target)
                     delivery = .live
                 } else {
                     delivery = try await QuickReply.send(text, vendor: vendor, sessionID: sessionID)
@@ -493,7 +496,7 @@ struct QuickReplyBar: View {
                 state = .sent(delivery)
             } catch let failure as QuickReply.Failure {
                 state = .failed(failure.message)
-            } catch let failure as WindowDelivery.Failure {
+            } catch let failure as ClaudeComposer.Failure {
                 state = .failed(failure.message)
             } catch {
                 state = .failed(L10n.text("发送失败：\(error.localizedDescription)", "Not sent: \(error.localizedDescription)"))

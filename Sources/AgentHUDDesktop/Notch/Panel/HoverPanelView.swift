@@ -475,36 +475,68 @@ struct HoverPanelView: View {
     }
 }
 
-/// A listed session's last answer and a field for the next message, opened under its row.
+/// A listed session's latest turn as it goes, and a field for the next message, opened under its row.
 struct SessionQuickChat: View {
     static func anchor(_ sessionID: String) -> String { "quick-chat-" + sessionID }
-
     let session: LiveSession
     let vendor: String
     let agentName: String
-    @State private var reply: String?
-    @State private var loaded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let reply {
-                ReplyText(text: reply, maxHeight: 150)
-            } else if loaded {
-                Text(L10n.text("还没有读到回复", "No reply read yet"))
-                    .font(.ui(11)).foregroundStyle(.white.opacity(0.45))
-            }
+            LiveTurnView(vendor: vendor, sessionID: session.id, transcriptPath: session.transcriptPath, maxHeight: 150)
             QuickReplyBar(vendor: vendor, sessionID: session.id, agentName: agentName,
                           target: session.navigationTarget, focusesOnAppear: true)
         }
         .padding(10)
         .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-        // Read again whenever the session moves on, so a reply sent from here shows up in place.
-        .task(id: session.lastActivityAt ?? session.observedAt) {
-            guard let path = session.transcriptPath else { return }
-            let vendor = vendor
-            let text = await Task.detached { QuickReply.lastReply(vendor: vendor, transcriptPath: path) }.value
-            reply = text
-            loaded = true
+    }
+}
+
+/// A session's latest turn, read from its log every second: what it is doing and what it has written so far.
+struct LiveTurnView: View {
+    let vendor: String
+    let sessionID: String
+    var transcriptPath: String?
+    var maxHeight: CGFloat = 150
+    @State private var progress: QuickReply.Progress?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let progress {
+                status(progress)
+                if let text = progress.text {
+                    ReplyText(text: text, maxHeight: maxHeight)
+                }
+            } else {
+                Text(L10n.text("正在读取…", "Reading…")).font(.ui(11)).foregroundStyle(.white.opacity(0.45))
+            }
         }
+        .task(id: sessionID) {
+            let vendor = vendor, sessionID = sessionID, known = transcriptPath
+            while !Task.isCancelled {
+                let next = await Task.detached(priority: .utility) { () -> QuickReply.Progress? in
+                    guard let path = known ?? QuickReply.transcriptPath(vendor: vendor, sessionID: sessionID) else { return nil }
+                    return QuickReply.progress(vendor: vendor, transcriptPath: path)
+                }.value
+                if next != progress { progress = next ?? QuickReply.Progress() }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func status(_ progress: QuickReply.Progress) -> some View {
+        HStack(spacing: 6) {
+            if progress.running {
+                ProgressView().controlSize(.mini).tint(Theme.accent)
+                Text(progress.activity.map { L10n.text("正在运行：", "Running: ") + $0 } ?? L10n.text("正在思考…", "Thinking…"))
+                    .lineLimit(1).truncationMode(.tail)
+            } else if progress.text != nil {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Color(hex: 0x4cd38a))
+                Text(L10n.text("已完成", "Done"))
+            }
+        }
+        .font(.ui(11, .medium)).foregroundStyle(.white.opacity(0.7))
     }
 }

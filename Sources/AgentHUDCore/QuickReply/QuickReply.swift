@@ -62,6 +62,89 @@ public enum QuickReply {
         }
     }
 
+    /// Where a session's log is on this Mac: a Claude Code transcript or a Codex rollout.
+    public static func transcriptPath(vendor: String, sessionID: String,
+                                      home: URL = FileManager.default.homeDirectoryForCurrentUser) -> String? {
+        switch vendor {
+        case "Claude": return ClaudeQuickReply.transcript(sessionID: sessionID, home: home)?.path
+        case "Codex": return CodexQuickReply.rollout(threadID: sessionID, home: home)?.path
+        default: return nil
+        }
+    }
+
+    /// How a session's latest turn is going, read from the end of its log.
+    public struct Progress: Equatable, Sendable {
+        /// The turn after the latest prompt is still going.
+        public var running: Bool
+        /// What it is doing right now, such as a tool and what it is for; nil while it only writes or thinks.
+        public var activity: String?
+        /// The latest text it has written in this turn.
+        public var text: String?
+        public init(running: Bool = false, activity: String? = nil, text: String? = nil) {
+            self.running = running; self.activity = activity; self.text = text
+        }
+    }
+
+    public static func progress(vendor: String, transcriptPath: String) -> Progress {
+        guard let handle = FileHandle(forReadingAtPath: transcriptPath) else { return Progress() }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        let window: UInt64 = 2 * 1024 * 1024
+        try? handle.seek(toOffset: size > window ? size - window : 0)
+        let lines = ((try? handle.readToEnd()) ?? Data()).split(separator: 0x0A)
+        var progress = Progress()
+        // Walk back to the latest prompt, keeping the newest text, the newest activity and whether the turn ended.
+        var ended: Bool?
+        for line in lines.reversed() {
+            guard let object = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { continue }
+            switch vendor {
+            case "Claude":
+                guard object["isSidechain"] as? Bool != true, let type = object["type"] as? String,
+                      let message = object["message"] as? [String: Any] else { continue }
+                if type == "user" {
+                    if let content = message["content"] as? String, !content.isEmpty { progress.running = ended != true; return progress }
+                    if let blocks = message["content"] as? [[String: Any]], blocks.contains(where: { $0["type"] as? String == "text" }) {
+                        progress.running = ended != true; return progress
+                    }
+                    continue
+                }
+                guard type == "assistant", let blocks = message["content"] as? [[String: Any]] else { continue }
+                if ended == nil { ended = (message["stop_reason"] as? String) == "end_turn" }
+                for block in blocks.reversed() {
+                    if progress.text == nil, block["type"] as? String == "text", let text = block["text"] as? String,
+                       !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        progress.text = SessionCompletion.wholeReply(text)
+                    }
+                    if progress.activity == nil, ended != true, block["type"] as? String == "tool_use", let name = block["name"] as? String {
+                        let input = block["input"] as? [String: Any]
+                        let what = (input?["description"] as? String) ?? (input?["file_path"] as? String) ?? (input?["pattern"] as? String)
+                        progress.activity = what.map { "\(name) — \($0)" } ?? name
+                    }
+                }
+            case "Codex":
+                guard let payload = object["payload"] as? [String: Any], let kind = payload["type"] as? String else { continue }
+                switch (object["type"] as? String, kind) {
+                case ("event_msg", "user_message"):
+                    progress.running = ended != true; return progress
+                case ("event_msg", "task_complete"), ("event_msg", "turn_aborted"):
+                    if ended == nil { ended = true }
+                case ("event_msg", "agent_message"):
+                    if ended == nil { ended = false }
+                    if progress.text == nil { progress.text = SessionCompletion.wholeReply(payload["message"] as? String) }
+                case ("response_item", "function_call"), ("response_item", "custom_tool_call"), ("response_item", "local_shell_call"):
+                    if ended == nil { ended = false }
+                    if progress.activity == nil, ended != true { progress.activity = payload["name"] as? String ?? kind }
+                default:
+                    if ended == nil, object["type"] as? String == "event_msg", kind == "task_started" { ended = false }
+                }
+            default:
+                return progress
+            }
+        }
+        progress.running = ended == false
+        return progress
+    }
+
     /// The session's last visible answer, read from the end of its log: the newest assistant text in a Claude Code
     /// transcript, the newest agent message in a Codex rollout.
     public static func lastReply(vendor: String, transcriptPath: String) -> String? {
@@ -217,6 +300,15 @@ enum CodexQuickReply {
             throw QuickReply.Failure.rejected(reason)
         }
         return true
+    }
+
+    /// The thread's rollout, `sessions/<yyyy>/<mm>/<dd>/rollout-<time>-<id>.jsonl` in the data directory.
+    static func rollout(threadID: String, home: URL) -> URL? {
+        let sessions = CodexLocator.dataDirectory(home: home).appendingPathComponent("sessions", isDirectory: true)
+        guard let files = FileManager.default.enumerator(at: sessions, includingPropertiesForKeys: nil) else { return nil }
+        let suffix = "-\(threadID).jsonl"
+        for case let file as URL in files where file.lastPathComponent.hasSuffix(suffix) { return file }
+        return nil
     }
 
     /// The folder the thread runs in, from the `session_meta` that opens its rollout,
