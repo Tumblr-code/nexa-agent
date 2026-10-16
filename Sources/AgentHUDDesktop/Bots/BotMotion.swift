@@ -189,7 +189,8 @@ struct BotMotion: Sendable {
             if awake || staysBot, morph > 0.9 || !hasFace, act == nil, now >= nextAct {
                 let chosen = pick(at: now)
                 act = chosen
-                nextAct = now + chosen.length + 0.5 + random.unit() * 1.9
+                // A long act earns a longer rest, so a busy bot still spends most of a turn at the calm pace.
+                nextAct = now + chosen.length + 0.5 + random.unit() * 1.9 + max(0, chosen.length - 1.2)
                 if chosen.kind == .blinkTwice { blinks = [now, now + 0.24] }
             }
         } else {
