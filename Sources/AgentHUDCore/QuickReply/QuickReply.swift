@@ -121,6 +121,17 @@ public enum QuickReply {
                 switch (object["type"] as? String, kind) {
                 case ("event_msg", "user_message"):
                     progress.running = ended != true; return progress
+                // Current Codex Desktop builds log a turn's prompt and answers only as conversation items.
+                case ("response_item", "message"):
+                    let text = CodexQuickReply.text(of: payload)
+                    switch payload["role"] as? String {
+                    case "user" where text.map(CodexQuickReply.isPrompt) == true:
+                        progress.running = ended != true; return progress
+                    case "assistant":
+                        if ended == nil { ended = false }
+                        if progress.text == nil { progress.text = SessionCompletion.wholeReply(text) }
+                    default: break
+                    }
                 case ("event_msg", "task_complete"), ("event_msg", "turn_aborted"):
                     if ended == nil { ended = true }
                 case ("event_msg", "agent_message"):
@@ -163,6 +174,8 @@ public enum QuickReply {
                 switch payload["type"] as? String {
                 case "agent_message": text = payload["message"] as? String
                 case "task_complete": text = payload["last_agent_message"] as? String
+                case "message" where object["type"] as? String == "response_item" && payload["role"] as? String == "assistant":
+                    text = CodexQuickReply.text(of: payload)
                 default: continue
                 }
             default:
@@ -200,6 +213,22 @@ enum ClaudeQuickReply {
 }
 
 enum CodexQuickReply {
+    /// The text of a `response_item` message: its `input_text` or `output_text` parts, joined.
+    static func text(of message: [String: Any]) -> String? {
+        let parts = (message["content"] as? [[String: Any]])?.compactMap { part -> String? in
+            guard let type = part["type"] as? String, type == "input_text" || type == "output_text" else { return nil }
+            return part["text"] as? String
+        } ?? []
+        return parts.isEmpty ? nil : parts.joined(separator: "\n\n")
+    }
+
+    /// Whether a user item is something the user typed, not context Codex adds as user items, which are tagged:
+    /// `<environment_context>`, `<external_codex_apps_open_page>` and the like.
+    static func isPrompt(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && !trimmed.hasPrefix("<")
+    }
+
     static let startTurnMethod = "thread-follower-start-turn"
     nonisolated(unsafe) private static var running: [ChildProcess] = []
     private static let lock = NSLock()
